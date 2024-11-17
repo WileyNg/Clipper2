@@ -179,6 +179,7 @@
     <ClCompile Include="..\..\CPP\Clipper2Lib\src\clipper.rectclip.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Wrapper.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
