@@ -57,7 +57,7 @@ namespace Clipper2Lib {
 		Paths64 subject;
 		subject.push_back(inputPath);
 
-		co.AddPaths(subject, JoinType::Bevel, EndType::Round);
+		co.AddPaths(subject, JoinType::Miter, EndType::Square);
 		Paths64 solution;
 		co.OffsetOpenPathOneSided(delta * 1e6, solution);
 		
@@ -89,6 +89,8 @@ namespace Clipper2Lib {
 			Group& group = *git;
 			Paths64::const_iterator path_in_it = group.paths_in.cbegin();
 			group_delta_ = std::abs(delta_);
+			join_type_ = group.join_type;
+			end_type_ = group.end_type;
 			for (; path_in_it != group.paths_in.cend(); ++path_in_it) // DoGroupOffset(*git);
 			{
 				Path64::size_type pathLen = path_in_it->size();
