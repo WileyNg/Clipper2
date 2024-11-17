@@ -57,7 +57,7 @@ namespace Clipper2Lib {
 		Paths64 subject;
 		subject.push_back(inputPath);
 
-		co.AddPaths(subject, JoinType::Miter, EndType::Square);
+		co.AddPaths(subject, JoinType::Miter, EndType::Butt);
 		Paths64 solution;
 		co.OffsetOpenPathOneSided(delta * 1e6, solution);
 		
@@ -98,17 +98,25 @@ namespace Clipper2Lib {
 				const Path64& path = *path_in_it;
 				BuildNormals(path);
 				//OffsetOpenPath(group, path); 
+
+				auto startPoint = path[0];
+				auto startNormal = norms[0];
+				path_out.push_back(Point64(startPoint.x + startNormal.x * delta, startPoint.y + startNormal.y * delta, startPoint.z));
 				
 				size_t highI = path.size() - 1;
 				// offset the left side going forward
 				for (Path64::size_type j = 1, k = 0; j < highI; k = j, ++j)
 					OffsetPoint(group, path, j, k);
 
+
+				auto endPoint = path[highI];
+				auto endNormal = -norms[highI];
+				path_out.push_back(Point64(endPoint.x + endNormal.x * delta, endPoint.y + endNormal.y * delta, endPoint.z));
+
 				// reverse normals
 				//for (size_t i = highI; i > 0; --i)
 				//	norms[i] = PointD(-norms[i - 1].x, -norms[i - 1].y);
 				//norms[0] = norms[highI];
-
 
 				//Right side
 				//for (size_t j = highI - 1, k = highI; j > 0; k = j, --j)
