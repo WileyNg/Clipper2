@@ -44,6 +44,7 @@ namespace Clipper2Lib {
 	}
 
 
+
 	PINVOKE Point3d* OffsetPolylineOneSide(
 		const Point3d* inputPoints,
 		int inputCount,
@@ -57,7 +58,7 @@ namespace Clipper2Lib {
 		Paths64 subject;
 		subject.push_back(inputPath);
 
-		co.AddPaths(subject, JoinType::Miter, EndType::Butt);
+		co.AddPaths(subject, JoinType::Round, EndType::Butt);
 		Paths64 solution;
 		co.OffsetOpenPathOneSided(delta * 1e6, solution);
 		
@@ -78,86 +79,118 @@ namespace Clipper2Lib {
 
 	void ClipperOffset::OffsetOpenPathOneSided(double delta, Paths64& paths)
 	{
+		//Begins copy of ExecuteInternal(double delta) ; 
+
 		paths.clear();
 		solution = &paths;
 		solution->reserve(CalcSolutionCapacity());
 
-		delta_ = delta;
-		std::vector<Group>::iterator git;
-		for (git = groups_.begin(); git != groups_.end(); ++git)
+		if (std::abs(delta) < 0.5) // ie: offset is insignificant
 		{
-			Group& group = *git;
-			Paths64::const_iterator path_in_it = group.paths_in.cbegin();
-			group_delta_ = std::abs(delta_);
-			join_type_ = group.join_type;
-			end_type_ = group.end_type;
-			for (; path_in_it != group.paths_in.cend(); ++path_in_it) // DoGroupOffset(*git);
-			{
-				Path64::size_type pathLen = path_in_it->size();
-				path_out.clear();
-				const Path64& path = *path_in_it;
-				BuildNormals(path);
-				//OffsetOpenPath(group, path); 
-
-				auto startPoint = path[0];
-				auto startNormal = norms[0];
-				path_out.push_back(Point64(startPoint.x + startNormal.x * delta, startPoint.y + startNormal.y * delta, startPoint.z));
-				
-				size_t highI = path.size() - 1;
-				// offset the left side going forward
-				for (Path64::size_type j = 1, k = 0; j < highI; k = j, ++j)
-					OffsetPoint(group, path, j, k);
-
-
-				auto endPoint = path[highI];
-				auto endNormal = -norms[highI];
-				path_out.push_back(Point64(endPoint.x + endNormal.x * delta, endPoint.y + endNormal.y * delta, endPoint.z));
-
-				// reverse normals
-				//for (size_t i = highI; i > 0; --i)
-				//	norms[i] = PointD(-norms[i - 1].x, -norms[i - 1].y);
-				//norms[0] = norms[highI];
-
-				//Right side
-				//for (size_t j = highI - 1, k = highI; j > 0; k = j, --j)
-				//	OffsetPoint(group, path, j, k);
-				solution->push_back(path_out);
-			}
-			
-			if (!error_code_) 
-				continue; // all OK
-			solution->clear();
+			Paths64::size_type sol_size = 0;
+			for (const Group& group : groups_) sol_size += group.paths_in.size();
+			solution->reserve(sol_size);
+			for (const Group& group : groups_)
+				copy(group.paths_in.begin(), group.paths_in.end(), back_inserter(*solution));
 		}
+		else
+		{
+			temp_lim_ = (miter_limit_ <= 1) ?
+				2.0 :
+				2.0 / (miter_limit_ * miter_limit_);
 
-		//if (!solution->size()) 
-		//	return;
+			delta_ = delta;
+			std::vector<Group>::iterator git;
+			for (git = groups_.begin(); git != groups_.end(); ++git)
+			{
+				// Begins copy of DoGroupOffset(*git);
+				Group& group = *git;
+				Paths64::const_iterator path_in_it = group.paths_in.cbegin();
+				group_delta_ = std::abs(delta_);
+				join_type_ = group.join_type;
+				end_type_ = group.end_type;
 
-//		bool paths_reversed = CheckReverseOrientation();
-//		//clean up self-intersections ...
-//		Clipper64 c;
-//		c.PreserveCollinear(false);
-//		//the solution should retain the orientation of the input
-//		c.ReverseSolution(reverse_solution_ != paths_reversed);
-//#ifdef USINGZ
-//		auto fp = std::bind(&ClipperOffset::ZCB, this, std::placeholders::_1,
-//			std::placeholders::_2, std::placeholders::_3,
-//			std::placeholders::_4, std::placeholders::_5);
-//		c.SetZCallback(fp);
-//#endif
-//		c.AddSubject(*solution);
-//		if (solution_tree)
-//		{
-//			if (paths_reversed)
-//				c.Execute(ClipType::Union, FillRule::Negative, *solution_tree);
-//			else
-//				c.Execute(ClipType::Union, FillRule::Positive, *solution_tree);
-//		}
-//		else
-//		{
-//			if (paths_reversed)
-//				c.Execute(ClipType::Union, FillRule::Negative, *solution);
-//			else
-//				c.Execute(ClipType::Union, FillRule::Positive, *solution);
-//		}
+				for (; path_in_it != group.paths_in.cend(); ++path_in_it)
+				{
+					Path64::size_type pathLen = path_in_it->size();
+					path_out.clear();
+					const Path64& path = *path_in_it;
+					BuildNormals(path);
+
+					//Begins copy of OffsetOpenPath(group, *path_in_it);
+
+					auto startPoint = path[0];
+					auto startNormal = norms[0];
+					double abs_delta = std::abs(group_delta_);
+					auto pt1 = Point64(startPoint.x - abs_delta * startNormal.x, startPoint.y - abs_delta * startNormal.y, std::numeric_limits<int64_t>::max());
+					auto pt2 = Point64(startPoint.x + abs_delta * startNormal.x, startPoint.y + abs_delta * startNormal.y, std::numeric_limits<int64_t>::max());
+					path_out.push_back(Point64(pt1));
+					path_out.push_back(Point64(pt2));
+
+					size_t highI = path.size() - 1;
+					// offset the left side going forward
+					for (Path64::size_type j = 1, k = 0; j < highI; k = j, ++j)
+						OffsetPoint(group, path, j, k);
+
+					// reverse normals
+					for (size_t i = highI; i > 0; --i)
+						norms[i] = PointD(-norms[i - 1].x, -norms[i - 1].y);
+					norms[0] = norms[highI];
+
+					// do the line end cap
+					if (deltaCallback64_)
+						group_delta_ = deltaCallback64_(path, norms, highI, highI);
+
+					if (std::fabs(group_delta_) <= floating_point_tolerance)
+						path_out.push_back(path[highI]);
+					else
+					{
+						double abs_delta = std::abs(group_delta_);
+
+						auto pt1 = Point64(path[highI].x - abs_delta * norms[highI].x, path[highI].y - abs_delta * norms[highI].y, std::numeric_limits<int64_t>::max());
+						auto pt2 = Point64(path[highI].x + abs_delta * norms[highI].x, path[highI].y + abs_delta * norms[highI].y, std::numeric_limits<int64_t>::max());
+						path_out.push_back(Point64(pt1));
+						path_out.push_back(Point64(pt2));
+
+					}
+
+					for (size_t j = highI - 1, k = highI; j > 0; k = j, --j)
+						OffsetPoint(group, path, j, k);
+					solution->push_back(path_out);
+				}
+				//Begins copy of rest of ExecuteInternal(double delta) ; 
+
+				if (!solution->size()) return;
+
+				bool paths_reversed = CheckReverseOrientation();
+				//clean up self-intersections ...
+				Clipper64 c;
+				c.PreserveCollinear(false);
+				//the solution should retain the orientation of the input
+				c.ReverseSolution(reverse_solution_ != paths_reversed);
+#ifdef USINGZ
+				auto fp = std::bind(&ClipperOffset::ZCB, this, std::placeholders::_1,
+					std::placeholders::_2, std::placeholders::_3,
+					std::placeholders::_4, std::placeholders::_5);
+				c.SetZCallback(fp);
+#endif
+				c.AddSubject(*solution);
+				if (solution_tree)
+				{
+					if (paths_reversed)
+						c.Execute(ClipType::Union, FillRule::Negative, *solution_tree);
+					else
+						c.Execute(ClipType::Union, FillRule::Positive, *solution_tree);
+				}
+				else
+				{
+					if (paths_reversed)
+						c.Execute(ClipType::Union, FillRule::Negative, *solution);
+					else
+						c.Execute(ClipType::Union, FillRule::Positive, *solution);
+				}
+			}
+
+		}
 	}
 }
