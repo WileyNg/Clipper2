@@ -112,68 +112,77 @@ namespace Clipper2Lib
 
 #ifdef USINGZ
   using z_type = int64_t;
+ 
 #endif
 
   // Point ------------------------------------------------------------------------
 
   template <typename T>
   struct Point {
-    T x;
-    T y;
+      T x;
+      T y;
 #ifdef USINGZ
-     z_type z;
-
-    template <typename T2>
-    inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0)
-    {
-      if constexpr (std::is_integral_v<T> &&
-        is_round_invocable<T2>::value && !std::is_integral_v<T2>)
+      z_type z;
+      bool w;
+      template <typename T2>
+      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const bool w_ = false)
       {
-        x = static_cast<T>(std::round(x_));
-        y = static_cast<T>(std::round(y_));
-        z = z_;
+          if constexpr (std::is_integral_v<T> &&
+              is_round_invocable<T2>::value && !std::is_integral_v<T2>)
+          {
+              x = static_cast<T>(std::round(x_));
+              y = static_cast<T>(std::round(y_));
+              z = z_;
+              w = w_;
+          }
+          else
+          {
+              x = static_cast<T>(x_);
+              y = static_cast<T>(y_);
+              z = z_;
+              w = w_;
+          }
       }
-      else
+
+      explicit Point() : x(0), y(0), z(0), w(false) {};
+
+      template <typename T2>
+      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const bool w_ = false)
       {
-        x = static_cast<T>(x_);
-        y = static_cast<T>(y_);
-        z = z_;
+          Init(x_, y_, z_, w_);
       }
-    }
 
-    explicit Point() : x(0), y(0), z(0) {};
+      template <typename T2>
+      explicit Point(const Point<T2>& p)
+      {
+          Init(p.x, p.y, p.z, p.w);
+      }
 
-    template <typename T2>
-    Point(const T2 x_, const T2 y_, const z_type z_ = 0)
-    {
-      Init(x_, y_);
-      z = z_;
-    }
+      template <typename T2>
+      explicit Point(const Point<T2>& p, z_type z_)
+      {
+          Init(p.x, p.y, z_, p.w);
+      }
 
-    template <typename T2>
-    explicit Point(const Point<T2>& p)
-    {
-      Init(p.x, p.y, p.z);
-    }
+      template <typename T2>
+      explicit Point(const Point<T2>& p, z_type z_, bool w_)
+      {
+          Init(p.x, p.y, z_, w_);
+      }
 
-    template <typename T2>
-    explicit Point(const Point<T2>& p, z_type z_)
-    {
-      Init(p.x, p.y, z_);
-    }
+      Point operator * (const double scale) const
+      {
+          return Point(x * scale, y * scale, z, w);
+      }
 
-    Point operator * (const double scale) const
-    {
-      return Point(x * scale, y * scale, z);
-    }
+      void SetZ(const z_type z_value) { z = z_value; }
+      void SetW(const bool w_value) { w = w_value; }
 
-    void SetZ(const z_type z_value) { z = z_value; }
-
-    friend std::ostream& operator<<(std::ostream& os, const Point& point)
-    {
-      os << point.x << "," << point.y << "," << point.z;
-      return os;
-    }
+      friend std::ostream& operator<<(std::ostream& os, const Point& point)
+      {
+          os << point.x << "," << point.y << "," << point.z << "," << point.w;
+          return os;
+      }
 
 #else
 

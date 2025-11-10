@@ -1515,6 +1515,9 @@ namespace Clipper2Lib {
     OutPt* op_front = outrec->pts;
     OutPt* op_back = op_front->next;
 
+    Point64& pt_ref = const_cast<Point64&>(pt);
+    if (pt_ref.z == 0)
+        pt_ref.z = 0;
     if (to_front)
     {
       if (pt == op_front->pt)
@@ -1779,6 +1782,9 @@ namespace Clipper2Lib {
 
   void ClipperBase::IntersectEdges(Active& e1, Active& e2, const Point64& pt)
   {
+      Point64& pt_ref = const_cast<Point64&>(pt);
+      if (pt_ref.z == 0)
+          pt_ref.z = 0;
     //MANAGE OPEN PATH INTERSECTIONS SEPARATELY ...
     if (has_open_paths_ && (IsOpen(e1) || IsOpen(e2)))
     {
@@ -2355,8 +2361,11 @@ namespace Clipper2Lib {
   {
     Point64 ip;
     if (!GetSegmentIntersectPt(e1.bot, e1.top, e2.bot, e2.top, ip))
-      ip = Point64(e1.curr_x, top_y); //parallel edges
+      ip = Point64(e1.curr_x, top_y, e1.bot.z); //parallel edges
 
+    Point64& pt_ref2 = const_cast<Point64&>(ip);
+    if (pt_ref2.z == 0)
+        pt_ref2.z = 0;
     //rounding errors can occasionally place the calculated intersection
     //point either below or above the scanbeam, so check and correct ...
     if (ip.y > bot_y_ || ip.y < top_y)
@@ -2365,15 +2374,27 @@ namespace Clipper2Lib {
       double abs_dx2 = std::fabs(e2.dx);
       if (abs_dx1 > 100 && abs_dx2 > 100)
       {
-        if (abs_dx1 > abs_dx2)
-          ip = GetClosestPointOnSegment(ip, e1.bot, e1.top);
+          if (abs_dx1 > abs_dx2)
+          {
+              ip = GetClosestPointOnSegment(ip, e1.bot, e1.top);
+          }
+
         else
-          ip = GetClosestPointOnSegment(ip, e2.bot, e2.top);
+        {
+            ip = GetClosestPointOnSegment(ip, e2.bot, e2.top);
+        }
+
       }
       else if (abs_dx1 > 100)
-        ip = GetClosestPointOnSegment(ip, e1.bot, e1.top);
+      {
+          ip = GetClosestPointOnSegment(ip, e1.bot, e1.top);
+      }
+
       else if (abs_dx2 > 100)
-        ip = GetClosestPointOnSegment(ip, e2.bot, e2.top);
+      {
+          ip = GetClosestPointOnSegment(ip, e2.bot, e2.top);
+      }
+
       else
       {
         if (ip.y < top_y) ip.y = top_y;
@@ -2459,14 +2480,16 @@ namespace Clipper2Lib {
     for (node_iter = intersect_nodes_.begin();
       node_iter != intersect_nodes_.end();  ++node_iter)
     {
+
       if (!EdgesAdjacentInAEL(*node_iter))
       {
         node_iter2 = node_iter + 1;
         while (!EdgesAdjacentInAEL(*node_iter2)) ++node_iter2;
         std::swap(*node_iter, *node_iter2);
       }
-
+      
       IntersectNode& node = *node_iter;
+
       IntersectEdges(*node.edge1, *node.edge2, node.pt);
       SwapPositionsInAEL(*node.edge1, *node.edge2);
 

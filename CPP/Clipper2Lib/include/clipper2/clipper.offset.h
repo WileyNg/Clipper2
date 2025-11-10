@@ -96,8 +96,9 @@ public:
 	void AddPaths(const Paths64& paths, JoinType jt_, EndType et_);
 	void Clear() { groups_.clear(); norms.clear(); };
 
-	void OffsetOpenPathOneSided(double delta, Paths64& paths);
-	
+	void OffsetPathVariable(double delta, Paths64& paths);
+	void OffsetPointVariable(Group& group, const Path64& path, size_t j, size_t k);
+
 	void Execute(double delta, Paths64& paths);
 	void Execute(double delta, PolyTree64& polytree);
 	void Execute(DeltaCallback64 delta_cb, Paths64& paths);
