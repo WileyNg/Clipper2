@@ -2363,9 +2363,7 @@ namespace Clipper2Lib {
     if (!GetSegmentIntersectPt(e1.bot, e1.top, e2.bot, e2.top, ip))
       ip = Point64(e1.curr_x, top_y, e1.bot.z); //parallel edges
 
-    Point64& pt_ref2 = const_cast<Point64&>(ip);
-    if (pt_ref2.z == 0)
-        pt_ref2.z = 0;
+	ip.z = e1.bot.z;
     //rounding errors can occasionally place the calculated intersection
     //point either below or above the scanbeam, so check and correct ...
     if (ip.y > bot_y_ || ip.y < top_y)
@@ -2401,6 +2399,8 @@ namespace Clipper2Lib {
         else ip.y = bot_y_;
         if (abs_dx1 < abs_dx2) ip.x = TopX(e1, ip.y);
         else ip.x = TopX(e2, ip.y);
+
+        ip.z = e1.bot.z;
       }
     }
     intersect_nodes_.push_back(IntersectNode(&e1, &e2, ip));

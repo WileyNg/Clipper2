@@ -922,6 +922,7 @@ namespace Clipper2Lib
     {
       ip.x = static_cast<T>(ln1a.x + t * dx1);
       ip.y = static_cast<T>(ln1a.y + t * dy1);
+      ip.z = ln1a.z;
   }
     return true;
   }
@@ -991,11 +992,13 @@ namespace Clipper2Lib
     if constexpr (std::is_integral_v<T>)
       return Point<T>(
         seg1.x + static_cast<T>(nearbyint(q * dx)),
-        seg1.y + static_cast<T>(nearbyint(q * dy)));
+        seg1.y + static_cast<T>(nearbyint(q * dy)),
+        seg1.z );
     else
       return Point<T>(
         seg1.x + static_cast<T>(q * dx),
-        seg1.y + static_cast<T>(q * dy));
+        seg1.y + static_cast<T>(q * dy),
+          seg1.z);
   }
 
   enum class PointInPolygonResult { IsOn, IsInside, IsOutside };
