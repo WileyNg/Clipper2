@@ -819,7 +819,6 @@ namespace Clipper2Lib {
       else if (ip == e1.top) ip.z = e1.top.z;
       else if (ip == e2.bot) ip.z = e2.bot.z;
       else if (ip == e2.top) ip.z = e2.top.z;
-      else ip.z = DefaultZ;
       zCallback_(e1.bot, e1.top, e2.bot, e2.top, ip);
     }
     else
@@ -828,7 +827,6 @@ namespace Clipper2Lib {
       else if (ip == e2.top) ip.z = e2.top.z;
       else if (ip == e1.bot) ip.z = e1.bot.z;
       else if (ip == e1.top) ip.z = e1.top.z;
-      else ip.z = DefaultZ;
       zCallback_(e2.bot, e2.top, e1.bot, e1.top, ip);
     }
   }
@@ -1515,9 +1513,6 @@ namespace Clipper2Lib {
     OutPt* op_front = outrec->pts;
     OutPt* op_back = op_front->next;
 
-    Point64& pt_ref = const_cast<Point64&>(pt);
-    if (pt_ref.z == 0)
-        pt_ref.z = 0;
     if (to_front)
     {
       if (pt == op_front->pt)
@@ -1782,9 +1777,6 @@ namespace Clipper2Lib {
 
   void ClipperBase::IntersectEdges(Active& e1, Active& e2, const Point64& pt)
   {
-      Point64& pt_ref = const_cast<Point64&>(pt);
-      if (pt_ref.z == 0)
-          pt_ref.z = 0;
     //MANAGE OPEN PATH INTERSECTIONS SEPARATELY ...
     if (has_open_paths_ && (IsOpen(e1) || IsOpen(e2)))
     {
