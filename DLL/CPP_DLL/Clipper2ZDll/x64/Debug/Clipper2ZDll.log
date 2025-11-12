@@ -1,2 +1,7 @@
 ﻿  clipper.engine.cpp
+  clipper.offset.cpp
+  clipper.rectclip.cpp
+  Wrapper.cpp
+  dllmain.cpp
+  Generating Code...
   Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.dll

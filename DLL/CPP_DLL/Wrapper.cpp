@@ -96,57 +96,104 @@ namespace Clipper2Lib {
 		if (path.empty()) {
 			return Paths64();
 		}
-
 		Paths64 splitPaths;
 		Path64 currentPath;
 		Path64 leadingItems; // Items before first split marker
-		bool previousWasTrue = false;
 		bool foundFirstSplit = false;
-
 		// Check if starts with single true and ends with single true
 		bool startsWithSingleTrue = (path.size() > 1 && path[0].w && !path[1].w);
 		bool endsWithSingleTrue = (path.size() > 1 && path[path.size() - 1].w && !path[path.size() - 2].w);
 		bool specialCase = startsWithSingleTrue && endsWithSingleTrue;
 
+		// Check if ends with double true (consecutive T,T at the end)
+		bool endsWithDoubleTrue = (path.size() > 1 && path[path.size() - 1].w && path[path.size() - 2].w);
+
 		for (size_t i = 0; i < path.size(); i++) {
 			const Point64& pt = path[i];
+			bool previousWasTrue = (i > 0) && path[i - 1].w;
+			bool nextWasTrue = (i + 1 < path.size()) && path[i + 1].w;
 
-			// Check if we have two consecutive trues (start of new path)
-			if (pt.w && previousWasTrue) {
-				if (!foundFirstSplit) {
-					// First split found
-					foundFirstSplit = true;
-					if (!specialCase) {
-						// Normal case: save leading items
-						leadingItems = currentPath;
-						currentPath.clear();
-					}
-					else {
-						// Special case: don't save leading items, just start new path
+			// Check if this is the last split marker (ends with double T)
+			bool isLastSplitMarker = endsWithDoubleTrue && (i == path.size() - 2);
+
+			// Check if current point starts a split marker sequence:
+			// - Current is true AND (next is true OR it's isolated in middle)
+			// - But NOT if previous was also true (we're in the middle of a sequence)
+			bool isStartOfSplitMarker = false;
+			if (pt.w && !previousWasTrue && i > 0) {
+				// Current is true and previous was false
+				// This is a split marker if:
+				// 1. Next is also true (consecutive pair starts here)
+				// 2. OR it's isolated in the middle (but NOT at the very end)
+				bool isConsecutiveTrue = nextWasTrue;
+				bool isIsolatedMiddleTrue = (i < path.size() - 1) && !nextWasTrue;
+
+				isStartOfSplitMarker = isConsecutiveTrue || isIsolatedMiddleTrue;
+			}
+			// If we hit the start of a split marker
+			if (isStartOfSplitMarker && !foundFirstSplit) {
+				// First split found
+				foundFirstSplit = true;
+				if (!specialCase) {
+					// Normal case: add split marker to current path, then save leading items
+					currentPath.push_back(pt);
+					leadingItems = currentPath;
+					currentPath.clear();
+				}
+				else {
+					// Special case: add the split marker to current path before saving
+					currentPath.push_back(pt);
+					if (!currentPath.empty()) {
 						splitPaths.push_back(currentPath);
 						currentPath.clear();
 					}
 				}
-				else if (!currentPath.empty()) {
-					// Subsequent split - save current path and start new one
+			}
+			else if (isStartOfSplitMarker && foundFirstSplit) {
+				// Subsequent split
+				if (isLastSplitMarker) {
+					// If this is the last split marker, add it to current path before saving
+					currentPath.push_back(pt);
+				}
+
+				// Save current path and start new one
+				if (!currentPath.empty()) {
 					splitPaths.push_back(currentPath);
 					currentPath.clear();
 				}
+
+				// If not the last split marker, skip the first T
+				// If it is the last split marker, we already added it above
 			}
-
-			currentPath.push_back(pt);
-			previousWasTrue = pt.w;
+			else {
+				// Regular point (including the second T of consecutive pairs)
+				currentPath.push_back(pt);
+			}
 		}
-
 		// Handle the last path
 		if (!currentPath.empty()) {
 			if (!specialCase && !leadingItems.empty()) {
-				// Normal case: append leading items to the end
-				currentPath.insert(currentPath.end(), leadingItems.begin(), leadingItems.end());
-			}
-			splitPaths.push_back(currentPath);
-		}
+				// Check if we only have ONE split (not wrapping scenario)
+				// This happens when there's only one split marker and the path doesn't wrap around
+				bool hasIsolatedEndTrue = (path.size() > 0 && path[path.size() - 1].w &&
+					(path.size() < 2 || !path[path.size() - 2].w));
 
+				if (hasIsolatedEndTrue && splitPaths.empty()) {
+					// Single split scenario - add paths separately without wrapping
+					splitPaths.push_back(leadingItems);
+					splitPaths.push_back(currentPath);
+				}
+				else {
+					// Normal wrapping case: Prepend currentPath before leadingItems
+					Path64 wrappedPath = currentPath;
+					wrappedPath.insert(wrappedPath.end(), leadingItems.begin(), leadingItems.end());
+					splitPaths.insert(splitPaths.begin(), wrappedPath);
+				}
+			}
+			else {
+				splitPaths.push_back(currentPath);
+			}
+		}
 		return splitPaths;
 	}
 	bool IsPathClosed(const Point3d* points, int count) {
@@ -196,13 +243,13 @@ namespace Clipper2Lib {
 
 		Paths64 solution;
 
-		//co.SetDeltaCallback([delta](const Path64& path,
-		//	const PathD& path_norms, size_t curr_idx, size_t prev_idx)
-		//	{
-		//		// gradually scale down the offset to a minimum of 25% of delta
-		//		double high = static_cast<double>(path.size() - 1) * 1.25;
-		//		return (curr_idx-high) / high * delta*1e6;
-		//	});
+		co.SetDeltaCallback([delta](const Path64& path,
+			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
+			{
+				// gradually scale down the offset to a minimum of 25% of delta
+				double high = static_cast<double>(path.size() - 1) * 1.25;
+				return (curr_idx-high) / high * delta*1e6;
+			});
 
 		co.OffsetPathVariable(delta * 1e6, solution);
 
@@ -234,16 +281,28 @@ namespace Clipper2Lib {
 		}
 
 		// Process second path (splitPaths[1])
-		if (splitPaths.size() > 1) {
-			Path64 resultPath1 = splitPaths[1];
+		if (splitPaths.size() > 0) {
+			Path64 resultPath0 = splitPaths[0];
+
+			// If there are 3 paths, append the last point from the second path to the first path
+			if (splitPaths.size() > 2 && splitPaths[1].size() > 0) {
+				resultPath0.push_back(splitPaths[1].back());
+			}
 
 			if (smoothZ) {
-				SmoothZValuesAcrossPlateaus(resultPath1);
+				SmoothZValuesAcrossPlateaus(resultPath0);
 			}
-
 			if (simplifyPath) {
-				resultPath1 = Clipper2Lib::SimplifyPath(resultPath1, epsilon, isClosedPath);
+				resultPath0 = Clipper2Lib::SimplifyPath(resultPath0, epsilon, isClosedPath);
 			}
+			outputCount0 = static_cast<int>(resultPath0.size());
+			*outputPoints0 = new Point3d[outputCount0];
+			ConvertFromPath64(resultPath0, *outputPoints0, outputCount0);
+		}
+
+		// Process second path (splitPaths[1]) - use last path if there are 3
+		if (splitPaths.size() > 1) {
+			Path64 resultPath1 = (splitPaths.size() > 2) ? splitPaths[2] : splitPaths[1];
 
 			outputCount1 = static_cast<int>(resultPath1.size());
 			*outputPoints1 = new Point3d[outputCount1];

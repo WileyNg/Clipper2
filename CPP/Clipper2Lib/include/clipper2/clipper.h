@@ -643,7 +643,7 @@ namespace Clipper2Lib {
   {
     const size_t len = path.size(), high = len -1;
     const double epsSqr = Sqr(epsilon);
-    if (len < 4) return Path<T>(path);
+    if (len < 10) return Path<T>(path);
 
     std::vector<bool> flags(len);
     std::vector<double> distSqr(len);
@@ -701,6 +701,12 @@ namespace Clipper2Lib {
     result.reserve(len);
     for (typename Path<T>::size_type i = 0; i < len; ++i)
       if (!flags[i]) result.push_back(path[i]);
+    // Ensure closed path has matching start and end points
+    if (isClosedPath && !result.empty() && result.front() != result.back())
+    {
+        result.push_back(result.front());
+    }
+
     return result;
   }
 
