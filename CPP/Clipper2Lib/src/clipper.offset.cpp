@@ -273,21 +273,17 @@ void ClipperOffset::DoRound(const Path64& path, size_t j, size_t k, double angle
 	PointD offsetVec = PointD(norms[k].x * group_delta_, norms[k].y * group_delta_);
 
 	if (j == k) offsetVec.Negate();
-#ifdef USINGZ
+
 	path_out.push_back(Point64(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z));
-#else
-	path_out.push_back(Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
-#endif
+
 	int steps = static_cast<int>(std::ceil(steps_per_rad_ * std::abs(angle))); // #448, #456
 	for (int i = 1; i < steps; ++i) // ie 1 less than steps
 	{
 		offsetVec = PointD(offsetVec.x * step_cos_ - step_sin_ * offsetVec.y,
 			offsetVec.x * step_sin_ + offsetVec.y * step_cos_);
-#ifdef USINGZ
+
 		path_out.push_back(Point64(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z));
-#else
-		path_out.push_back(Point64(pt.x + offsetVec.x, pt.y + offsetVec.y));
-#endif
+
 	}
 	path_out.push_back(GetPerpendic(path[j], norms[j], group_delta_));
 }
