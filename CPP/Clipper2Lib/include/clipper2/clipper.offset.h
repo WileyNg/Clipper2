@@ -81,6 +81,8 @@ private:
 	void DoGroupOffset(Group &group);
 	void ExecuteInternal(double delta);
 public:
+	bool IsClosed = false;
+
 	explicit ClipperOffset(double miter_limit = 2.0,
 		double arc_tolerance = 0.0,
 		bool preserve_collinear = false,
@@ -98,7 +100,8 @@ public:
 
 	void OffsetPathConstant(double delta, Paths64& paths);
 	void OffsetPathVariable( Paths64& paths);
-	void OffsetPointVariable(Group& group, const Path64& path, size_t j, size_t k);
+	void OffsetPointWithZ(Group& group, const Path64& path, size_t j, size_t k);
+	void OffsetOpenPathWithZ(Group& group, const Path64& path);
 
 	void Execute(double delta, Paths64& paths);
 	void Execute(double delta, PolyTree64& polytree);
