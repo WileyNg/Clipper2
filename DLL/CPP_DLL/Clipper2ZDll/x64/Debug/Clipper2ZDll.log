@@ -1,4 +1,8 @@
-﻿  Wrapper.cpp
+﻿  clipper.engine.cpp
+  clipper.offset.cpp
+  clipper.rectclip.cpp
+  dllmain.cpp
+  Wrapper.cpp
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244: 'initializing': conversion from 'T' to 'double', possible loss of data
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244:         with
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244:         [
@@ -9,4 +13,149 @@ C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning 
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:         [
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:             T=int64_t
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:         ]
-  Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.dll
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(355,6): error C2039: 'IsClosed': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(370,6): error C2039: 'OffsetPathConstant': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(375,7): error C2039: 'OffsetPathConstant': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(432,6): error C2039: 'OffsetPathVariable': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(441,7): error C2039: 'OffsetPathVariable': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(553,22): error C2039: 'OffsetPathConstant': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(558,3): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(559,3): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(559,21): error C3861: 'CalcSolutionCapacity': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(564,30): error C2065: 'groups_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(564,9): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(564,20): error C2143: syntax error: missing ',' before '&'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(564,22): error C2530: 'group': references must be initialized
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(564,28): error C2143: syntax error: missing ';' before ':'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(564,37): error C2143: syntax error: missing ';' before ')'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(565,4): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(566,30): error C2065: 'groups_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(566,9): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(566,20): error C2143: syntax error: missing ',' before '&'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(566,22): error C2530: 'group': references must be initialized
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(566,28): error C2143: syntax error: missing ';' before ':'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(566,37): error C2143: syntax error: missing ';' before ')'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(567,71): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(567,56): error C3861: 'back_inserter': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(567,5): error C3861: 'copy': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(571,4): error C2065: 'temp_lim_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(571,17): error C2065: 'miter_limit_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(573,12): error C2065: 'miter_limit_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(573,27): error C2065: 'miter_limit_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(575,4): error C2065: 'delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,16): error C2065: 'Group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,9): error C2923: 'std::vector': 'Group' is not a valid template type argument for parameter '_Ty'
+      C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,16):
+      see declaration of 'Group'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,9): error C2976: 'std::vector': too few template arguments
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\vector(442,7):
+      see declaration of 'std::vector'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,24): error C2955: 'std::vector': use of class template requires template argument list
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\vector(442,7):
+      see declaration of 'std::vector'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,33): error C2133: 'git': unknown size
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(576,33): error C2512: 'std::_Vector_iterator<std::_Vector_val<conditional<std::_Is_simple_alloc_v<allocator_traits<_Alloc>::rebind_alloc<_Ty>>,std::_Simple_types<_Value_type>,std::_Vec_iter_types<_Ty,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::size_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::difference_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::pointer,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::const_pointer>>::type>>': no appropriate default constructor available
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\vector(255,7):
+      see declaration of 'std::_Vector_iterator<std::_Vector_val<conditional<std::_Is_simple_alloc_v<allocator_traits<_Alloc>::rebind_alloc<_Ty>>,std::_Simple_types<_Value_type>,std::_Vec_iter_types<_Ty,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::size_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::difference_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::pointer,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::const_pointer>>::type>>'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(577,15): error C2065: 'groups_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(577,39): error C2065: 'groups_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(577,54): error C2675: unary '++': 'std::_Vector_iterator<std::_Vector_val<conditional<std::_Is_simple_alloc_v<allocator_traits<_Alloc>::rebind_alloc<_Ty>>,std::_Simple_types<_Value_type>,std::_Vec_iter_types<_Ty,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::size_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::difference_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::pointer,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::const_pointer>>::type>>' does not define this operator or a conversion to a type acceptable to the predefined operator
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(579,5): error C2065: 'Group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(579,12): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(579,20): error C2100: you cannot dereference an operand of type 'std::_Vector_iterator<std::_Vector_val<conditional<std::_Is_simple_alloc_v<allocator_traits<_Alloc>::rebind_alloc<_Ty>>,std::_Simple_types<_Value_type>,std::_Vec_iter_types<_Ty,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::size_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::difference_type,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::pointer,allocator_traits<allocator_traits<_Alloc>::rebind_alloc<_Ty>>::const_pointer>>::type>>'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(580,42): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(583,9): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(587,11): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(587,46): error C2065: 'delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(587,64): error C2065: 'delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(588,6): error C2065: 'group_delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(588,22): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(588,44): error C2065: 'delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(588,53): error C2065: 'delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(591,6): error C2065: 'group_delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(591,30): error C2065: 'delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(593,34): error C2065: 'group_delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(596,5): error C2065: 'join_type_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(596,18): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(597,5): error C2065: 'end_type_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(597,17): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(598,9): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(598,47): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(600,23): error C2065: 'arc_tolerance_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(601,27): error C2065: 'arc_tolerance_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(605,6): error C2065: 'step_sin_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(606,6): error C2065: 'step_cos_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(607,10): error C2065: 'group_delta_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(607,30): error C2065: 'step_sin_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(607,43): error C2065: 'step_sin_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(608,6): error C2065: 'steps_per_rad_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(611,26): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(615,29): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(616,7): error C2065: 'end_type_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(616,20): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(621,6): error C3861: 'BuildNormals': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(623,6): error C2065: 'path_out': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(626,9): error C2065: 'IsClosed': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(627,21): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(627,7): error C3861: 'OffsetPolygon': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(629,27): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(629,7): error C3861: 'OffsetOpenPathWithZ': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(630,6): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(630,26): error C2065: 'path_out': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(634,10): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(636,27): error C3861: 'CheckReverseOrientation': identifier not found
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(641,23): error C2065: 'reverse_solution_': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(641,44): warning C4805: '!=': unsafe mix of type '<error type>' and type 'bool' in operation
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(643,41): error C2248: 'Clipper2Lib::ClipperOffset::ZCB': cannot access private member declared in class 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(67,8):
+      see declaration of 'Clipper2Lib::ClipperOffset::ZCB'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(643,46): error C2355: 'this': can only be referenced inside non-static member functions or non-static data member initializers
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(646,7): error C2664: 'void Clipper2Lib::Clipper64::SetZCallback(Clipper2Lib::ZCallback64)': cannot convert argument 1 from 'std::_Binder<std::_Unforced,void (__cdecl Clipper2Lib::ClipperOffset::* )(const Clipper2Lib::Point64 &,const Clipper2Lib::Point64 &,const Clipper2Lib::Point64 &,const Clipper2Lib::Point64 &,Clipper2Lib::Point64 &),const std::_Ph<1> &,const std::_Ph<2> &,const std::_Ph<3> &,const std::_Ph<4> &,const std::_Ph<5> &>' to 'Clipper2Lib::ZCallback64'
+      C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(646,20):
+      No user-defined-conversion operator available that can perform this conversion, or the operator cannot be called
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.engine.h(468,8):
+      see declaration of 'Clipper2Lib::Clipper64::SetZCallback'
+      C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(646,7):
+      while trying to match the argument list '(std::_Binder<std::_Unforced,void (__cdecl Clipper2Lib::ClipperOffset::* )(const Clipper2Lib::Point64 &,const Clipper2Lib::Point64 &,const Clipper2Lib::Point64 &,const Clipper2Lib::Point64 &,Clipper2Lib::Point64 &),const std::_Ph<1> &,const std::_Ph<2> &,const std::_Ph<3> &,const std::_Ph<4> &,const std::_Ph<5> &>)'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(648,19): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(649,9): error C2065: 'solution_tree': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(652,55): error C2065: 'solution_tree': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(654,55): error C2065: 'solution_tree': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(659,55): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(661,55): error C2065: 'solution': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(668,22): error C2039: 'OffsetOpenPathWithZ': is not a member of 'Clipper2Lib::ClipperOffset'
+      C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\include\clipper2\clipper.offset.h(32,8):
+      see declaration of 'Clipper2Lib::ClipperOffset'
+  
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(668,22): error C2182: 'OffsetOpenPathWithZ': this use of 'void' is not valid
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(668,42): error C2065: 'Group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(668,49): error C2065: 'group': undeclared identifier
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(668,56): error C2059: syntax error: 'const'
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(668,56): error C1003: error count exceeds 100; stopping compilation
+  Generating Code...

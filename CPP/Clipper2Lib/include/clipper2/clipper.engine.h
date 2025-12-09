@@ -1,25 +1,19 @@
 /*******************************************************************************
 * Author    :  Angus Johnson                                                   *
 * Date      :  17 September 2024                                               *
-* Website   :  http://www.angusj.com                                           *
+* Website   :  https://www.angusj.com                                          *
 * Copyright :  Angus Johnson 2010-2024                                         *
 * Purpose   :  This is the main polygon clipping module                        *
-* License   :  http://www.boost.org/LICENSE_1_0.txt                            *
+* License   :  https://www.boost.org/LICENSE_1_0.txt                           *
 *******************************************************************************/
 
 #ifndef CLIPPER_ENGINE_H
 #define CLIPPER_ENGINE_H
 
-#include <cstdlib>
-#include <stdint.h> //#541
-#include <iostream>
-#include <queue>
-#include <vector>
-#include <functional>
-#include <numeric>
-#include <memory>
-
 #include "clipper2/clipper.core.h"
+#include <queue>
+#include <functional>
+#include <memory>
 
 namespace Clipper2Lib {
 
@@ -60,12 +54,12 @@ namespace Clipper2Lib {
 
 	struct OutPt {
 		Point64 pt;
-		OutPt*	next = nullptr;
-		OutPt*	prev = nullptr;
+		OutPt* next = nullptr;
+		OutPt* prev = nullptr;
 		OutRec* outrec;
 		HorzSegment* horz = nullptr;
 
-		OutPt(const Point64& pt_, OutRec* outrec_): pt(pt_), outrec(outrec_) {
+		OutPt(const Point64& pt_, OutRec* outrec_) : pt(pt_), outrec(outrec_) {
 			next = this;
 			prev = this;
 		}
@@ -139,35 +133,37 @@ namespace Clipper2Lib {
 		PathType polytype;
 		bool is_open;
 		LocalMinima(Vertex* v, PathType pt, bool open) :
-			vertex(v), polytype(pt), is_open(open){}
+			vertex(v), polytype(pt), is_open(open) {
+		}
 	};
 
 	struct IntersectNode {
 		Point64 pt;
 		Active* edge1;
 		Active* edge2;
-		IntersectNode() : pt(Point64(0,0)), edge1(NULL), edge2(NULL) {}
-			IntersectNode(Active* e1, Active* e2, Point64& pt_) :
-			pt(pt_), edge1(e1), edge2(e2) {}
+		IntersectNode() : pt(Point64(0, 0)), edge1(NULL), edge2(NULL) {}
+		IntersectNode(Active* e1, Active* e2, Point64& pt_) :
+			pt(pt_), edge1(e1), edge2(e2) {
+		}
 	};
 
 	struct HorzSegment {
 		OutPt* left_op;
 		OutPt* right_op = nullptr;
 		bool left_to_right = true;
-		HorzSegment() : left_op(nullptr) { }
-		explicit HorzSegment(OutPt* op) : left_op(op) { }
+		HorzSegment() : left_op(nullptr) {}
+		explicit HorzSegment(OutPt* op) : left_op(op) {}
 	};
 
 	struct HorzJoin {
 		OutPt* op1 = nullptr;
 		OutPt* op2 = nullptr;
 		HorzJoin() {};
-		explicit HorzJoin(OutPt* ltr, OutPt* rtl) : op1(ltr), op2(rtl) { }
+		explicit HorzJoin(OutPt* ltr, OutPt* rtl) : op1(ltr), op2(rtl) {}
 	};
 
 #ifdef USINGZ
-		typedef std::function<void(const Point64& e1bot, const Point64& e1top,
+	typedef std::function<void(const Point64& e1bot, const Point64& e1top,
 		const Point64& e2bot, const Point64& e2top, Point64& pt)> ZCallback64;
 
 	typedef std::function<void(const PointD& e1bot, const PointD& e1top,
@@ -204,51 +200,51 @@ namespace Clipper2Lib {
 		bool minima_list_sorted_ = false;
 		bool using_polytree_ = false;
 		Active* actives_ = nullptr;
-		Active *sel_ = nullptr;
+		Active* sel_ = nullptr;
 		LocalMinimaList minima_list_;		//pointers in case of memory reallocs
 		LocalMinimaList::iterator current_locmin_iter_;
 		std::vector<Vertex*> vertex_lists_;
 		std::priority_queue<int64_t> scanline_list_;
 		IntersectNodeList intersect_nodes_;
-        HorzSegmentList horz_seg_list_;
+		HorzSegmentList horz_seg_list_;
 		std::vector<HorzJoin> horz_join_list_;
 		void Reset();
 		inline void InsertScanline(int64_t y);
-		inline bool PopScanline(int64_t &y);
+		inline bool PopScanline(int64_t& y);
 		inline bool PopLocalMinima(int64_t y, LocalMinima*& local_minima);
 		void DisposeAllOutRecs();
 		void DisposeVerticesAndLocalMinima();
 		void DeleteEdges(Active*& e);
-		inline void AddLocMin(Vertex &vert, PathType polytype, bool is_open);
-		bool IsContributingClosed(const Active &e) const;
-		inline bool IsContributingOpen(const Active &e) const;
-		void SetWindCountForClosedPathEdge(Active &edge);
-		void SetWindCountForOpenPathEdge(Active &e);
+		inline void AddLocMin(Vertex& vert, PathType polytype, bool is_open);
+		bool IsContributingClosed(const Active& e) const;
+		inline bool IsContributingOpen(const Active& e) const;
+		void SetWindCountForClosedPathEdge(Active& edge);
+		void SetWindCountForOpenPathEdge(Active& e);
 		void InsertLocalMinimaIntoAEL(int64_t bot_y);
-		void InsertLeftEdge(Active &e);
-		inline void PushHorz(Active &e);
-		inline bool PopHorz(Active *&e);
-		inline OutPt* StartOpenPath(Active &e, const Point64& pt);
-		inline void UpdateEdgeIntoAEL(Active *e);
-		void IntersectEdges(Active &e1, Active &e2, const Point64& pt);
-		inline void DeleteFromAEL(Active &e);
+		void InsertLeftEdge(Active& e);
+		inline void PushHorz(Active& e);
+		inline bool PopHorz(Active*& e);
+		inline OutPt* StartOpenPath(Active& e, const Point64& pt);
+		inline void UpdateEdgeIntoAEL(Active* e);
+		void IntersectEdges(Active& e1, Active& e2, const Point64& pt);
+		inline void DeleteFromAEL(Active& e);
 		inline void AdjustCurrXAndCopyToSEL(const int64_t top_y);
 		void DoIntersections(const int64_t top_y);
-		void AddNewIntersectNode(Active &e1, Active &e2, const int64_t top_y);
+		void AddNewIntersectNode(Active& e1, Active& e2, const int64_t top_y);
 		bool BuildIntersectList(const int64_t top_y);
 		void ProcessIntersectList();
 		void SwapPositionsInAEL(Active& edge1, Active& edge2);
 		OutRec* NewOutRec();
-		OutPt* AddOutPt(const Active &e, const Point64& pt);
-		OutPt* AddLocalMinPoly(Active &e1, Active &e2,
+		OutPt* AddOutPt(const Active& e, const Point64& pt);
+		OutPt* AddLocalMinPoly(Active& e1, Active& e2,
 			const Point64& pt, bool is_new = false);
-		OutPt* AddLocalMaxPoly(Active &e1, Active &e2, const Point64& pt);
-		void DoHorizontal(Active &horz);
-		bool ResetHorzDirection(const Active &horz, const Vertex* max_vertex,
-			int64_t &horz_left, int64_t &horz_right);
+		OutPt* AddLocalMaxPoly(Active& e1, Active& e2, const Point64& pt);
+		void DoHorizontal(Active& horz);
+		bool ResetHorzDirection(const Active& horz, const Vertex* max_vertex,
+			int64_t& horz_left, int64_t& horz_right);
 		void DoTopOfScanbeam(const int64_t top_y);
-		Active *DoMaxima(Active &e);
-		void JoinOutrecPaths(Active &e1, Active &e2);
+		Active* DoMaxima(Active& e);
+		void JoinOutrecPaths(Active& e1, Active& e2);
 		void FixSelfIntersects(OutRec* outrec);
 		void DoSplitOp(OutRec* outRec, OutPt* splitOp);
 
@@ -284,7 +280,7 @@ namespace Clipper2Lib {
 		virtual ~ClipperBase();
 		int ErrorCode() const { return error_code_; };
 		void PreserveCollinear(bool val) { preserve_collinear_ = val; };
-		bool PreserveCollinear() const { return preserve_collinear_;};
+		bool PreserveCollinear() const { return preserve_collinear_; };
 		void ReverseSolution(bool val) { reverse_solution_ = val; };
 		bool ReverseSolution() const { return reverse_solution_; };
 		void Clear();
@@ -305,7 +301,7 @@ namespace Clipper2Lib {
 	protected:
 		PolyPath* parent_;
 	public:
-		PolyPath(PolyPath* parent = nullptr): parent_(parent){}
+		PolyPath(PolyPath* parent = nullptr) : parent_(parent) {}
 		virtual ~PolyPath() {};
 		//https://en.cppreference.com/w/cpp/language/rule_of_three
 		PolyPath(const PolyPath&) = delete;
@@ -498,7 +494,7 @@ namespace Clipper2Lib {
 			closed_paths.clear();
 			open_paths.clear();
 			if (ExecuteInternal(clip_type, fill_rule, false))
-					BuildPaths64(closed_paths, &open_paths);
+				BuildPaths64(closed_paths, &open_paths);
 			CleanUp();
 			return succeeded_;
 		}
@@ -557,17 +553,17 @@ namespace Clipper2Lib {
 			PointD e1t = PointD(e1top) * invScale_;
 			PointD e2b = PointD(e2bot) * invScale_;
 			PointD e2t = PointD(e2top) * invScale_;
-			zCallbackD_(e1b,e1t, e2b, e2t, tmp);
+			zCallbackD_(e1b, e1t, e2b, e2t, tmp);
 			pt.z = tmp.z; // only update 'z'
 		};
 
 		void CheckCallback()
 		{
-			if(zCallbackD_)
+			if (zCallbackD_)
 				// if the user defined float point callback has been assigned
 				// then assign the proxy callback function
 				ClipperBase::zCallback_ =
-					std::bind(&ClipperD::ZCB, this, std::placeholders::_1,
+				std::bind(&ClipperD::ZCB, this, std::placeholders::_1,
 					std::placeholders::_2, std::placeholders::_3,
 					std::placeholders::_4, std::placeholders::_5);
 			else
