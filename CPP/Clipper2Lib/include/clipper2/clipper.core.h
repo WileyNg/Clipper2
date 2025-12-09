@@ -130,12 +130,14 @@ namespace Clipper2Lib
                 x = static_cast<T>(std::round(x_));
                 y = static_cast<T>(std::round(y_));
                 z = z_;
+                w = w_;
             }
             else
             {
                 x = static_cast<T>(x_);
                 y = static_cast<T>(y_);
                 z = z_;
+                w = w_;
             }
         }
 

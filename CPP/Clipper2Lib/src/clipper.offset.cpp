@@ -187,15 +187,15 @@ namespace Clipper2Lib {
 		norms.emplace_back(GetUnitNormal(*path_stop_iter, *(path.cbegin())));
 	}
 
-	void ClipperOffset::DoBevel(const Path64& path, size_t j, size_t k)
+	void ClipperOffset::DoBevel(const Path64& path, size_t j, size_t k, bool ending )
 	{
 		PointD pt1, pt2;
 		if (j == k)
 		{
 			double abs_delta = std::abs(group_delta_);
 #ifdef USINGZ
-			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z);
-			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z);
+			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending);
+			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending);
 #else
 			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y);
 			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y);
@@ -204,8 +204,8 @@ namespace Clipper2Lib {
 		else
 		{
 #ifdef USINGZ
-			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z);
-			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z);
+			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending);
+			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending);
 #else
 			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y);
 			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y);
@@ -215,7 +215,7 @@ namespace Clipper2Lib {
 		path_out.emplace_back(pt2);
 	}
 
-	void ClipperOffset::DoSquare(const Path64& path, size_t j, size_t k)
+	void ClipperOffset::DoSquare(const Path64& path, size_t j, size_t k, bool ending )
 	{
 		PointD vec;
 		if (j == k)
@@ -255,14 +255,14 @@ namespace Clipper2Lib {
 		}
 	}
 
-	void ClipperOffset::DoMiter(const Path64& path, size_t j, size_t k, double cos_a)
+	void ClipperOffset::DoMiter(const Path64& path, size_t j, size_t k, double cos_a, bool ending )
 	{
 		double q = group_delta_ / (cos_a + 1);
 #ifdef USINGZ
 		path_out.emplace_back(
 			path[j].x + (norms[k].x + norms[j].x) * q,
 			path[j].y + (norms[k].y + norms[j].y) * q,
-			path[j].z);
+			path[j].z, ending);
 #else
 		path_out.emplace_back(
 			path[j].x + (norms[k].x + norms[j].x) * q,
@@ -270,7 +270,7 @@ namespace Clipper2Lib {
 #endif
 	}
 
-	void ClipperOffset::DoRound(const Path64& path, size_t j, size_t k, double angle)
+	void ClipperOffset::DoRound(const Path64& path, size_t j, size_t k, double angle, bool ending )
 	{
 		if (deltaCallback64_) {
 			// when deltaCallback64_ is assigned, group_delta_ won't be constant,
@@ -290,7 +290,7 @@ namespace Clipper2Lib {
 
 		if (j == k) offsetVec.Negate();
 #ifdef USINGZ
-		path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z);
+		path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z, ending);
 #else
 		path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y);
 #endif
@@ -300,7 +300,7 @@ namespace Clipper2Lib {
 			offsetVec = PointD(offsetVec.x * step_cos_ - step_sin_ * offsetVec.y,
 				offsetVec.x * step_sin_ + offsetVec.y * step_cos_);
 #ifdef USINGZ
-			path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z);
+			path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z, ending);
 #else
 			path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y);
 #endif
@@ -350,10 +350,19 @@ namespace Clipper2Lib {
 			path_out.emplace_back(GetPerpendic(path[j], norms[j], group_delta_));
 #endif
 		}
-		else if (cos_a > 0.999 && join_type_ != JoinType::Round)
+		else if (cos_a > 0.999 )
 		{
 			// almost straight - less than 2.5 degree (#424, #482, #526 & #724)
 			DoMiter(path, j, k, cos_a);
+		}
+		else if (cos_a > -0.99 && (sin_a * group_delta_ < 0))
+		{
+			// is concave
+			path_out.push_back(GetPerpendic(path[j], norms[k], group_delta_));
+			// this extra point is the only (simple) way to ensure that
+			// path reversals are fully cleaned with the trailing clipper
+			path_out.push_back(path[j]); // (#405)
+			path_out.push_back(GetPerpendic(path[j], norms[j], group_delta_));
 		}
 		else if (join_type_ == JoinType::Miter)
 		{
@@ -404,13 +413,13 @@ namespace Clipper2Lib {
 			switch (end_type_)
 			{
 			case EndType::Butt:
-				DoBevel(path, 0, 0);
+				DoBevel(path, 0, 0,true); 
 				break;
 			case EndType::Round:
-				DoRound(path, 0, 0, PI);
+				DoRound(path, 0, 0, PI, true);
 				break;
 			default:
-				DoSquare(path, 0, 0);
+				DoSquare(path, 0, 0, true);
 				break;
 			}
 		}
@@ -420,6 +429,7 @@ namespace Clipper2Lib {
 		for (Path64::size_type j = 1, k = 0; j < highI; k = j, ++j)
 			OffsetPoint(group, path, j, k);
 
+		is_another_side = true;
 		// reverse normals
 		for (size_t i = highI; i > 0; --i)
 			norms[i] = PointD(-norms[i - 1].x, -norms[i - 1].y);
@@ -436,13 +446,13 @@ namespace Clipper2Lib {
 			switch (end_type_)
 			{
 			case EndType::Butt:
-				DoBevel(path, highI, highI);
+				DoBevel(path, highI, highI, true);
 				break;
 			case EndType::Round:
-				DoRound(path, highI, highI, PI);
+				DoRound(path, highI, highI, PI, true);
 				break;
 			default:
-				DoSquare(path, highI, highI);
+				DoSquare(path, highI, highI, true);
 				break;
 			}
 		}

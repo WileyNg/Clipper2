@@ -61,7 +61,6 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		double arc_tolerance_ = 0.0;
 		bool preserve_collinear_ = false;
 		bool reverse_solution_ = false;
-
 #ifdef USINGZ
 		ZCallback64 zCallback64_ = nullptr;
 		void ZCB(const Point64& bot1, const Point64& top1,
@@ -70,10 +69,10 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		DeltaCallback64 deltaCallback64_ = nullptr;
 		size_t CalcSolutionCapacity();
 		bool CheckReverseOrientation();
-		void DoBevel(const Path64& path, size_t j, size_t k);
-		void DoSquare(const Path64& path, size_t j, size_t k);
-		void DoMiter(const Path64& path, size_t j, size_t k, double cos_a);
-		void DoRound(const Path64& path, size_t j, size_t k, double angle);
+		void DoBevel(const Path64& path, size_t j, size_t k, bool ending = false);
+		void DoSquare(const Path64& path, size_t j, size_t k, bool ending = false);
+		void DoMiter(const Path64& path, size_t j, size_t k, double cos_a, bool ending = false);
+		void DoRound(const Path64& path, size_t j, size_t k, double angle, bool ending = false);
 		void BuildNormals(const Path64& path);
 		void OffsetPolygon(Group& group, const Path64& path);
 		void OffsetOpenJoined(Group& group, const Path64& path);
@@ -82,6 +81,8 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		void DoGroupOffset(Group& group);
 		void ExecuteInternal(double delta);
 	public:
+		bool is_another_side = false;
+
 		explicit ClipperOffset(double miter_limit = 2.0,
 			double arc_tolerance = 0.0,
 			bool preserve_collinear = false,
@@ -101,6 +102,8 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		void Execute(double delta, Paths64& sols_64);
 		void Execute(double delta, PolyTree64& polytree);
 		void Execute(DeltaCallback64 delta_cb, Paths64& paths);
+
+		bool IsClosed = false;
 
 		double MiterLimit() const { return miter_limit_; }
 		void MiterLimit(double miter_limit) { miter_limit_ = miter_limit; }
