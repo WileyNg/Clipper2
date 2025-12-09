@@ -1,18 +1,12 @@
-﻿  clipper.engine.cpp
-  clipper.offset.cpp
-  clipper.rectclip.cpp
-  Wrapper.cpp
-C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(214,13): warning C4244: 'initializing': conversion from 'T' to 'double', possible loss of data
-C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(214,13): warning C4244:         with
-C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(214,13): warning C4244:         [
-C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(214,13): warning C4244:             T=int64_t
-C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(214,13): warning C4244:         ]
+﻿  Wrapper.cpp
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244: 'initializing': conversion from 'T' to 'double', possible loss of data
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244:         with
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244:         [
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244:             T=int64_t
 C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(215,13): warning C4244:         ]
-  dllmain.cpp
-  Generating Code...
-     Creating library C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.lib and object C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.exp
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244: 'initializing': conversion from 'T' to 'double', possible loss of data
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:         with
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:         [
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:             T=int64_t
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(216,13): warning C4244:         ]
   Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.dll

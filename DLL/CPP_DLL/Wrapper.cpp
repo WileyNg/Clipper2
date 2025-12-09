@@ -8,6 +8,7 @@ namespace Clipper2Lib {
 
 	const double floating_point_tolerance = 1e-12;
 	const double default_arc_tolerance = 50;
+	const double M_PI = 3.14159265358979323846;
 
 	struct Point3d {
 		double x;
@@ -320,6 +321,8 @@ namespace Clipper2Lib {
 			ConvertFromPath64(resultPath1, *outputPoints1, outputCount1);
 		}
 	}
+
+	// Exposed functions
 	PINVOKE void OffsetPathConstant(
 		const Point3d* inputPoints,
 		int inputCount,
@@ -352,7 +355,7 @@ namespace Clipper2Lib {
 		co.IsClosed = isClosedPath;
 		Paths64 subject;
 		subject.push_back(inputPath);
- 		co.AddPaths(subject, joinType, isClosedPath?  EndType::Polygon: EndType::Butt );
+ 		co.AddPaths(subject, joinType, isClosedPath?  EndType::Polygon: EndType::Butt);
 
 		Paths64 solution;
 
@@ -370,7 +373,8 @@ namespace Clipper2Lib {
 		{
 			Paths64 solution2;
 			co.OffsetPathConstant(delta * 1e6*-1, solution2);
-			solution.push_back(solution2[0]);
+			if (solution2.size() > 0)
+				solution.push_back(solution2[0]);
 		}
 
 		if (solution.empty()) {
@@ -381,6 +385,8 @@ namespace Clipper2Lib {
 			epsilonForSimplifying, outputPoints0, outputCount0,
 			outputPoints1, outputCount1);
 	}
+
+	// Exposed functions
 	PINVOKE void OffsetPathVariable(
 		const Point3d* inputPoints,
 		int inputCount,
@@ -413,7 +419,7 @@ namespace Clipper2Lib {
 		Paths64 subject;
 		Paths64 splitPaths;
 		subject.push_back(inputPath);
-		co.AddPaths(subject, joinType, isClosedPath ?  EndType::Polygon: EndType::Butt);
+		co.AddPaths(subject, joinType, isClosedPath ?  EndType::Polygon: EndType::Round);
 
 		Paths64 solution;
 
@@ -443,7 +449,100 @@ namespace Clipper2Lib {
 			epsilonForSimplifying, outputPoints0, outputCount0,
 			outputPoints1, outputCount1);
 	}
+	PINVOKE void Inflate(
+		const Point3d* inputPoints,
+		int inputCount,
+		double  delta,
+		Point3d** outputPoints0,
+		int& outputCount0,
+		JoinType joinType = JoinType::Round,
+		EndType endType = EndType::Butt,
+		double epsilonForSimplifying = 10.0,
+		bool simplifyBeforeOffset = true,
+		bool smoothZ = true,
+		bool simplifyPath = true
+	)
+	{
+		Path64 outPath;
+		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
+		bool isClosedPath = IsPathClosed(inputPoints, inputCount);
+		if (isClosedPath)
+			if (endType != EndType::Round)
+				endType = EndType::Polygon;
 
+		if (simplifyBeforeOffset) {
+			inputPath = Clipper2Lib::SimplifyPath(inputPath, epsilonForSimplifying, isClosedPath);
+		}
+
+		Paths64 outPaths = Clipper2Lib::InflatePaths(
+			Paths64{inputPath}, // expects Paths64
+			delta * 1e6,        // scale delta as in other usages
+			joinType,
+			 endType,
+			3,
+			100// assuming this is miter limit or arc tolerance
+		);
+
+		// Convert the first output path to Point3d array
+		if (!outPaths.empty()) {
+			outPaths[0].push_back(outPaths[0].front());
+			outputCount0 = static_cast<int>(outPaths[0].size());
+			*outputPoints0 = new Point3d[outputCount0];
+			ConvertFromPath64(outPaths[0], *outputPoints0, outputCount0);
+		} else {
+			outputCount0 = 0;
+			*outputPoints0 = nullptr;
+		}
+	}
+	PINVOKE void InflateVariable(
+		const Point3d* inputPoints,
+		int inputCount,
+		double*  deltas,
+		Point3d** outputPoints0,
+		int& outputCount0,
+		JoinType joinType = JoinType::Round,
+		EndType endType = EndType::Butt,
+		double epsilonForSimplifying = 10.0,
+		bool simplifyBeforeOffset = true,
+		bool smoothZ = true,
+		bool simplifyPath = true
+	)
+	{
+		Path64 outPath;
+		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
+		bool isClosedPath = IsPathClosed(inputPoints, inputCount);
+
+		if (simplifyBeforeOffset) {
+			inputPath = Clipper2Lib::SimplifyPath(inputPath, epsilonForSimplifying, isClosedPath);
+		}
+
+		ClipperOffset co;
+		Paths64 subject;
+		subject.push_back(inputPath);
+
+		co.AddPaths(subject, joinType, endType);
+
+		co.SetDeltaCallback([deltas](const Path64& path,
+			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
+			{
+				return  deltas[curr_idx] * 1e6  ;
+			});
+
+		//  solution
+		Paths64 solution;
+		co.Execute(1.0, solution);
+
+		// Convert the first output path to Point3d array
+		if (!solution.empty()) {
+			solution[0].push_back(solution[0].front());
+			outputCount0 = static_cast<int>(solution[0].size());
+			*outputPoints0 = new Point3d[outputCount0];
+			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
+		} else {
+			outputCount0 = 0;
+			*outputPoints0 = nullptr;
+		}
+	}
 	extern "C" __declspec(dllexport)
 		void FreeMemory(Point3d* ptr)
 	{
@@ -756,6 +855,10 @@ namespace Clipper2Lib {
 			DoSquare(path, j, k);
 	}
 
+#include <vector>
+#include <cmath>
 
+
+	
 
 }

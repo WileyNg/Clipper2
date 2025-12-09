@@ -15,7 +15,7 @@
 
 namespace Clipper2Lib {
 
-enum class JoinType { Square, Bevel, Round, Miter };
+enum class JoinType { Square, Bevel, Miter,Round  };
 //Square : Joins are 'squared' at exactly the offset distance (more complex code)
 //Bevel  : Similar to Square, but the offset distance varies with angle (simple code & faster)
 
