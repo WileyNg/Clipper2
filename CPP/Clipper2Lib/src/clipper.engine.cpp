@@ -813,7 +813,9 @@ namespace Clipper2Lib {
             else if (ip == e1.top) ip.z = e1.top.z;
             else if (ip == e2.bot) ip.z = e2.bot.z;
             else if (ip == e2.top) ip.z = e2.top.z;
-            else ip.z = DefaultZ;
+            else ip.z = e1.bot.z;
+            ip.w = e1.bot.w;
+            ip.o = e1.bot.o;
             zCallback_(e1.bot, e1.top, e2.bot, e2.top, ip);
         }
         else
@@ -822,7 +824,9 @@ namespace Clipper2Lib {
             else if (ip == e2.top) ip.z = e2.top.z;
             else if (ip == e1.bot) ip.z = e1.bot.z;
             else if (ip == e1.top) ip.z = e1.top.z;
-            else ip.z = DefaultZ;
+            else ip.z = e1.bot.z;
+            ip.w = e1.bot.w;
+			ip.o = e1.bot.o;
             zCallback_(e2.bot, e2.top, e1.bot, e1.top, ip);
         }
     }
@@ -2571,7 +2575,7 @@ namespace Clipper2Lib {
         if (IsHotEdge(horz))
         {
 #ifdef USINGZ
-            OutPt* op = AddOutPt(horz, Point64(horz.curr_x, y, horz.bot.z));
+            OutPt* op = AddOutPt(horz, Point64(horz.curr_x, y, horz.bot.z, horz.bot.w, horz.bot.o));
 #else
             OutPt* op = AddOutPt(horz, Point64(horz.curr_x, y));
 #endif
@@ -3075,7 +3079,7 @@ namespace Clipper2Lib {
             op2 = op->next;
         }
 #ifdef USINGZ
-        path.emplace_back(lastPt.x * inv_scale, lastPt.y * inv_scale, lastPt.z);
+        path.emplace_back(lastPt.x * inv_scale, lastPt.y * inv_scale, lastPt.z, lastPt.w, lastPt.o);
 #else
         path.emplace_back(lastPt.x * inv_scale, lastPt.y * inv_scale);
 #endif
@@ -3086,7 +3090,7 @@ namespace Clipper2Lib {
             {
                 lastPt = op2->pt;
 #ifdef USINGZ
-                path.emplace_back(lastPt.x * inv_scale, lastPt.y * inv_scale, lastPt.z);
+                path.emplace_back(lastPt.x * inv_scale, lastPt.y * inv_scale, lastPt.z, lastPt.w, lastPt.o);
 #else
                 path.emplace_back(lastPt.x * inv_scale, lastPt.y * inv_scale);
 #endif

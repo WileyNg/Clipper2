@@ -555,6 +555,8 @@ namespace Clipper2Lib {
 			PointD e2t = PointD(e2top) * invScale_;
 			zCallbackD_(e1b, e1t, e2b, e2t, tmp);
 			pt.z = tmp.z; // only update 'z'
+			pt.w = tmp.w;
+			pt.o = tmp.o;
 		};
 
 		void CheckCallback()

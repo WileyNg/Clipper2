@@ -120,9 +120,10 @@ namespace Clipper2Lib
         T y;
 #ifdef USINGZ
         z_type z;
-      bool w;
+      int w;
+      int o; // original index from input
         template <typename T2>
-      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const bool w_ = false)
+      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = false, const int o_ = 0)
         {
             if constexpr (std::is_integral_v<T> &&
                 is_round_invocable<T2>::value && !std::is_integral_v<T2>)
@@ -131,6 +132,7 @@ namespace Clipper2Lib
                 y = static_cast<T>(std::round(y_));
                 z = z_;
                 w = w_;
+				o = o_;
             }
             else
             {
@@ -138,45 +140,46 @@ namespace Clipper2Lib
                 y = static_cast<T>(y_);
                 z = z_;
                 w = w_;
+				o = o_;
             }
         }
 
       explicit Point() : x(0), y(0), z(0), w(false) {};
 
         template <typename T2>
-      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const bool w_ = false)
+      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = false, const int o_ = 0)
         {
-          Init(x_, y_, z_, w_);
+          Init(x_, y_, z_, w_, o_);
         }
 
         template <typename T2>
         explicit Point(const Point<T2>& p)
         {
-          Init(p.x, p.y, p.z, p.w);
+          Init(p.x, p.y, p.z, p.w, p.o);
         }
 
         template <typename T2>
         explicit Point(const Point<T2>& p, z_type z_)
         {
-          Init(p.x, p.y, z_, p.w);
+          Init(p.x, p.y, z_, p.w, p.o);
       }
 
       template <typename T2>
-      explicit Point(const Point<T2>& p, z_type z_, bool w_)
+      explicit Point(const Point<T2>& p, z_type z_, int w_, int o_ )
       {
-          Init(p.x, p.y, z_, w_);
+          Init(p.x, p.y, z_, w_, o_);
         }
 
         Point operator * (const double scale) const
         {
-          return Point(x * scale, y * scale, z, w);
+          return Point(x * scale, y * scale, z, w, o);
         }
 
         void SetZ(const z_type z_value) { z = z_value; }
 
         friend std::ostream& operator<<(std::ostream& os, const Point& point)
         {
-          os << point.x << "," << point.y << "," << point.z << "," << point.w;
+          os << point.x << "," << point.y << "," << point.z << "," << point.w << "," << point.o;
             return os;
         }
 
@@ -547,7 +550,7 @@ namespace Clipper2Lib
 #ifdef USINGZ
         std::transform(path.begin(), path.end(), back_inserter(result),
             [scale_x, scale_y](const auto& pt)
-            { return Point<T1>(pt.x * scale_x, pt.y * scale_y, pt.z); });
+            { return Point<T1>(pt.x * scale_x, pt.y * scale_y, pt.z,pt.w, pt.o); });
 #else
         std::transform(path.begin(), path.end(), back_inserter(result),
             [scale_x, scale_y](const auto& pt)
@@ -951,7 +954,9 @@ namespace Clipper2Lib
             ip.y = originy + static_cast<T>(hity);
         }
 #ifdef USINGZ
-        ip.z = 0;
+        ip.z = ln1a.z;
+		ip.w = ln1a.w;
+        ip.o = ln1a.o;
 #endif
         return true;
     }
@@ -976,7 +981,9 @@ namespace Clipper2Lib
             ip.x = static_cast<T>(ln1a.x + t * dx1);
             ip.y = static_cast<T>(ln1a.y + t * dy1);
 #ifdef USINGZ
-            ip.z = 0;
+            ip.z = ln1a.z;
+            ip.w = ln1a.w;
+			ip.o = ln1a.o;
 #endif
         }
         return true;
@@ -987,7 +994,7 @@ namespace Clipper2Lib
     inline Point<T> TranslatePoint(const Point<T>& pt, double dx, double dy)
     {
 #ifdef USINGZ
-        return Point<T>(pt.x + dx, pt.y + dy, pt.z);
+        return Point<T>(pt.x + dx, pt.y + dy, pt.z,pt.w, pt.o);
 #else
         return Point<T>(pt.x + dx, pt.y + dy);
 #endif
@@ -998,7 +1005,7 @@ namespace Clipper2Lib
     inline Point<T> ReflectPoint(const Point<T>& pt, const Point<T>& pivot)
     {
 #ifdef USINGZ
-        return Point<T>(pivot.x + (pivot.x - pt.x), pivot.y + (pivot.y - pt.y), pt.z);
+        return Point<T>(pivot.x + (pivot.x - pt.x), pivot.y + (pivot.y - pt.y), pt.z, pt.w, pt.o);
 #else
         return Point<T>(pivot.x + (pivot.x - pt.x), pivot.y + (pivot.y - pt.y));
 #endif

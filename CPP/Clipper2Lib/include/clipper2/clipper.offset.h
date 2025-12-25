@@ -69,10 +69,10 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		DeltaCallback64 deltaCallback64_ = nullptr;
 		size_t CalcSolutionCapacity();
 		bool CheckReverseOrientation();
-		void DoBevel(const Path64& path, size_t j, size_t k, bool ending = false);
-		void DoSquare(const Path64& path, size_t j, size_t k, bool ending = false);
-		void DoMiter(const Path64& path, size_t j, size_t k, double cos_a, bool ending = false);
-		void DoRound(const Path64& path, size_t j, size_t k, double angle, bool ending = false);
+		void DoBevel(const Path64& path, size_t j, size_t k);
+		void DoSquare(const Path64& path, size_t j, size_t k);
+		void DoMiter(const Path64& path, size_t j, size_t k, double cos_a);
+		void DoRound(const Path64& path, size_t j, size_t k, double angle);
 		void BuildNormals(const Path64& path);
 		void OffsetPolygon(Group& group, const Path64& path);
 		void OffsetOpenJoined(Group& group, const Path64& path);
@@ -82,7 +82,7 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		void ExecuteInternal(double delta);
 	public:
 		bool is_another_side = false;
-
+		bool ending_flag = false;
 		explicit ClipperOffset(double miter_limit = 2.0,
 			double arc_tolerance = 0.0,
 			bool preserve_collinear = false,

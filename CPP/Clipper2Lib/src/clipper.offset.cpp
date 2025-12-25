@@ -104,7 +104,7 @@ namespace Clipper2Lib {
 	static inline Point64 GetPerpendic(const Point64& pt, const PointD& norm, double delta)
 	{
 #ifdef USINGZ
-		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z);
+		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z,pt.w, pt.o);
 #else
 		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta);
 #endif
@@ -113,7 +113,7 @@ namespace Clipper2Lib {
 	inline PointD GetPerpendicD(const Point64& pt, const PointD& norm, double delta)
 	{
 #ifdef USINGZ
-		return PointD(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z);
+		return PointD(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z, pt.w, pt.o);
 #else
 		return PointD(pt.x + norm.x * delta, pt.y + norm.y * delta);
 #endif
@@ -127,6 +127,8 @@ namespace Clipper2Lib {
 			pt.y = -pt.y;
 #ifdef USINGZ
 			pt.z = pt.z;
+			pt.w = pt.w;
+			pt.o = pt.o;
 #endif
 		}
 	}
@@ -187,15 +189,18 @@ namespace Clipper2Lib {
 		norms.emplace_back(GetUnitNormal(*path_stop_iter, *(path.cbegin())));
 	}
 
-	void ClipperOffset::DoBevel(const Path64& path, size_t j, size_t k, bool ending )
+	void ClipperOffset::DoBevel(const Path64& path, size_t j, size_t k )
 	{
+		bool ending = j == k;
+		int side = is_another_side ? 2 : 1; // 1=left side, 2=right side
+
 		PointD pt1, pt2;
 		if (j == k)
 		{
 			double abs_delta = std::abs(group_delta_);
 #ifdef USINGZ
-			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending);
-			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending);
+			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending? 0: side, ending? j:path[j].o);
+			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending ? 0 : side, ending ? j : path[j].o);
 #else
 			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y);
 			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y);
@@ -204,8 +209,8 @@ namespace Clipper2Lib {
 		else
 		{
 #ifdef USINGZ
-			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending);
-			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending);
+			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending ? 0 : side, ending ? j : path[j].o);
+			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending ? 0 : side, ending ? j : path[j].o);
 #else
 			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y);
 			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y);
@@ -215,7 +220,7 @@ namespace Clipper2Lib {
 		path_out.emplace_back(pt2);
 	}
 
-	void ClipperOffset::DoSquare(const Path64& path, size_t j, size_t k, bool ending )
+	void ClipperOffset::DoSquare(const Path64& path, size_t j, size_t k )
 	{
 		PointD vec;
 		if (j == k)
@@ -255,14 +260,20 @@ namespace Clipper2Lib {
 		}
 	}
 
-	void ClipperOffset::DoMiter(const Path64& path, size_t j, size_t k, double cos_a, bool ending )
+	void ClipperOffset::DoMiter(const Path64& path, size_t j, size_t k, double cos_a )
 	{
+		bool ending = j == k;
+		int side = is_another_side ? 2 : 1; // 1=left side, 2=right side
 		double q = group_delta_ / (cos_a + 1);
 #ifdef USINGZ
 		path_out.emplace_back(
 			path[j].x + (norms[k].x + norms[j].x) * q,
 			path[j].y + (norms[k].y + norms[j].y) * q,
-			path[j].z, ending);
+			path[j].z,
+			ending ? 0 : side,
+			static_cast<int>(j) 
+		);
+		
 #else
 		path_out.emplace_back(
 			path[j].x + (norms[k].x + norms[j].x) * q,
@@ -270,15 +281,23 @@ namespace Clipper2Lib {
 #endif
 	}
 
-	void ClipperOffset::DoRound(const Path64& path, size_t j, size_t k, double angle, bool ending )
+	void ClipperOffset::DoRound(const Path64& path,
+		size_t j,
+		size_t k,
+		double angle)
 	{
+		ending_flag = j == k;
+		int side = is_another_side ? 2 : 1; // 1=left side, 2=right side
+
+		// --- existing dynamic delta handling (unchanged) ---
 		if (deltaCallback64_) {
-			// when deltaCallback64_ is assigned, group_delta_ won't be constant,
-			// so we'll need to do the following calculations for *every* vertex.
 			double abs_delta = std::fabs(group_delta_);
 			double arcTol = (arc_tolerance_ > floating_point_tolerance ?
 				std::min(abs_delta, arc_tolerance_) : abs_delta * arc_const);
-			double steps_per_360 = std::min(PI / std::acos(1 - arcTol / abs_delta), abs_delta * PI);
+			double steps_per_360 = std::min(
+				PI / std::acos(1 - arcTol / abs_delta),
+				abs_delta * PI);
+
 			step_sin_ = std::sin(2 * PI / steps_per_360);
 			step_cos_ = std::cos(2 * PI / steps_per_360);
 			if (group_delta_ < 0.0) step_sin_ = -step_sin_;
@@ -286,26 +305,83 @@ namespace Clipper2Lib {
 		}
 
 		Point64 pt = path[j];
-		PointD offsetVec = PointD(norms[k].x * group_delta_, norms[k].y * group_delta_);
 
-		if (j == k) offsetVec.Negate();
-#ifdef USINGZ
-		path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z, ending);
-#else
-		path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y);
-#endif
-		int steps = static_cast<int>(std::ceil(steps_per_rad_ * std::abs(angle))); // #448, #456
-		for (int i = 1; i < steps; ++i) // ie 1 less than steps
+		// ---------------------------------------------------
+		// 1) Determine delta range
+		// ---------------------------------------------------
+		double start_delta = group_delta_;
+		double end_delta = group_delta_;
+
+		if (ending_flag && deltaCallback64_) {
+			start_delta = deltaCallback64_(path, norms, j, k); 
+		}
+
+		// ---------------------------------------------------
+		// 2) Compute arc steps
+		// ---------------------------------------------------
+		int steps = static_cast<int>(
+			std::ceil(steps_per_rad_ * std::abs(angle)));
+
+		if (steps < 1) steps = 1;
+
+		double delta_step = (end_delta - start_delta) / steps;
+
+		// ---------------------------------------------------
+		// 3) Initial direction (unit normal)
+		// ---------------------------------------------------
+		PointD dir(norms[k].x, norms[k].y);
+		if (j == k) dir.Negate();
+
+		// ---------------------------------------------------
+		// 4) Emit first point
+		// ---------------------------------------------------
 		{
-			offsetVec = PointD(offsetVec.x * step_cos_ - step_sin_ * offsetVec.y,
-				offsetVec.x * step_sin_ + offsetVec.y * step_cos_);
+			double curr_delta = start_delta;
+			PointD offsetVec(dir.x * curr_delta, dir.y * curr_delta);
 #ifdef USINGZ
-			path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y, pt.z, ending);
+			path_out.emplace_back(pt.x + offsetVec.x,
+				pt.y + offsetVec.y,
+				pt.z, ending_flag ? 0 : side, static_cast<int>(j)
+			);
 #else
-			path_out.emplace_back(pt.x + offsetVec.x, pt.y + offsetVec.y);
+			path_out.emplace_back(pt.x + offsetVec.x,
+				pt.y + offsetVec.y);
 #endif
 		}
-		path_out.emplace_back(GetPerpendic(path[j], norms[j], group_delta_));
+
+		// ---------------------------------------------------
+		// 5) Generate rotating + interpolating arc
+		// ---------------------------------------------------
+		for (int i = 1; i < steps; ++i)
+		{
+			// rotate direction
+			dir = PointD(
+				dir.x * step_cos_ - step_sin_ * dir.y,
+				dir.x * step_sin_ + step_cos_ * dir.y
+			);
+
+			double curr_delta = start_delta + delta_step * i;
+			PointD offsetVec(dir.x * curr_delta, dir.y * curr_delta);
+
+#ifdef USINGZ
+			path_out.emplace_back(
+				pt.x + offsetVec.x,
+				pt.y + offsetVec.y,
+				pt.z,
+				ending_flag ? 0 : side,
+				static_cast<int>(j));
+#else
+			path_out.emplace_back(pt.x + offsetVec.x,
+				pt.y + offsetVec.y);
+#endif
+		}
+
+		// ---------------------------------------------------
+		// 6) Final perpendicular (snaps to final delta)
+		// ---------------------------------------------------
+		path_out.emplace_back(
+			GetPerpendic(path[j], norms[j], end_delta), pt.z, ending_flag ? 0 : side, static_cast<int>(j)
+		);
 	}
 
 	void ClipperOffset::OffsetPoint(Group& group, const Path64& path, size_t j, size_t k)
@@ -317,7 +393,12 @@ namespace Clipper2Lib {
 		// cos(A) < 0: change in angle is more than 90 degree
 
 		if (path[j] == path[k]) return;
+		ending_flag = false;
+		int side = is_another_side ? 2 : 1; // 1=left side, 2=right side
 
+		Point64  node = path[j];
+		node.w = side;
+		node.o = j;
 		double sin_a = CrossProduct(norms[j], norms[k]);
 		double cos_a = DotProduct(norms[j], norms[k]);
 		if (sin_a > 1.0) sin_a = 1.0;
@@ -329,7 +410,7 @@ namespace Clipper2Lib {
 		}
 		if (std::fabs(group_delta_) <= floating_point_tolerance)
 		{
-			path_out.emplace_back(path[j]);
+			path_out.emplace_back(node);
 			return;
 		}
 
@@ -341,9 +422,10 @@ namespace Clipper2Lib {
 			// will be removed later by the finishing union operation. This is also the best way 
 			// to ensure that path reversals (ie over-shrunk paths) are removed.
 #ifdef USINGZ
-			path_out.emplace_back(GetPerpendic(path[j], norms[k], group_delta_), path[j].z);
-			path_out.emplace_back(path[j]); // (#405, #873, #916)
-			path_out.emplace_back(GetPerpendic(path[j], norms[j], group_delta_), path[j].z);
+			path_out.emplace_back(GetPerpendic(node, norms[k], group_delta_), node.z);
+			path_out.emplace_back(node); // (#405, #873, #916)
+			path_out.emplace_back(GetPerpendic(node, norms[j], group_delta_), node.z);
+ 
 #else
 			path_out.emplace_back(GetPerpendic(path[j], norms[k], group_delta_));
 			path_out.emplace_back(path[j]); // (#405, #873, #916)
@@ -358,11 +440,11 @@ namespace Clipper2Lib {
 		else if (cos_a > -0.99 && (sin_a * group_delta_ < 0))
 		{
 			// is concave
-			path_out.push_back(GetPerpendic(path[j], norms[k], group_delta_));
+			path_out.push_back(GetPerpendic(node, norms[k], group_delta_));
 			// this extra point is the only (simple) way to ensure that
 			// path reversals are fully cleaned with the trailing clipper
-			path_out.push_back(path[j]); // (#405)
-			path_out.push_back(GetPerpendic(path[j], norms[j], group_delta_));
+			path_out.push_back(node); // (#405)
+			path_out.push_back(GetPerpendic(node, norms[j], group_delta_));
 		}
 		else if (join_type_ == JoinType::Miter)
 		{
@@ -413,13 +495,13 @@ namespace Clipper2Lib {
 			switch (end_type_)
 			{
 			case EndType::Butt:
-				DoBevel(path, 0, 0,true); 
+				DoBevel(path, 0, 0); 
 				break;
 			case EndType::Round:
-				DoRound(path, 0, 0, PI, true);
+				DoRound(path, 0, 0, PI);
 				break;
 			default:
-				DoSquare(path, 0, 0, true);
+				DoSquare(path, 0, 0);
 				break;
 			}
 		}
@@ -446,13 +528,13 @@ namespace Clipper2Lib {
 			switch (end_type_)
 			{
 			case EndType::Butt:
-				DoBevel(path, highI, highI, true);
+				DoBevel(path, highI, highI);
 				break;
 			case EndType::Round:
-				DoRound(path, highI, highI, PI, true);
+				DoRound(path, highI, highI, PI);
 				break;
 			default:
-				DoSquare(path, highI, highI, true);
+				DoSquare(path, highI, highI);
 				break;
 			}
 		}
@@ -520,7 +602,12 @@ namespace Clipper2Lib {
 					size_t steps = steps_per_rad_ > 0 ? static_cast<size_t>(std::ceil(steps_per_rad_ * 2 * PI)) : 0; //#617
 					path_out = Ellipse(pt, radius, radius, steps);
 #ifdef USINGZ
-					for (auto& p : path_out) p.z = pt.z;
+					for (auto& p : path_out) 
+					{
+						p.z = pt.z;
+						p.w = pt.w;
+						p.o = pt.o;
+					}
 #endif
 				}
 				else
@@ -529,7 +616,12 @@ namespace Clipper2Lib {
 					Rect64 r = Rect64(pt.x - d, pt.y - d, pt.x + d, pt.y + d);
 					path_out = r.AsPath();
 #ifdef USINGZ
-					for (auto& p : path_out) p.z = pt.z;
+					for (auto& p : path_out) 
+					{
+						p.z = pt.z;
+						p.w = pt.w;
+						p.o = pt.o;
+					}
 #endif
 				}
 
@@ -558,6 +650,8 @@ namespace Clipper2Lib {
 		else if (top1.z && (top1.z == top2.z)) ip.z = top1.z;
 		else if (zCallback64_) zCallback64_(bot1, top1, bot2, top2, ip);
 		else ip.z = top1.z;
+		ip.w = top1.w;
+		ip.o = top1.o;
 	}
 #endif
 

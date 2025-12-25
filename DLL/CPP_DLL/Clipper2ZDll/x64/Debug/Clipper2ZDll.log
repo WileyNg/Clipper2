@@ -1,5 +1,2 @@
-﻿  dllmain.cpp
-  Wrapper.cpp
-  Generating Code...
-     Creating library C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.lib and object C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.exp
+﻿  Wrapper.cpp
   Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.dll

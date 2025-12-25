@@ -35,7 +35,7 @@ namespace Clipper2Lib {
 	}
 	static inline Point64 GetPerpendic(const Point64& pt, const PointD& norm, double delta)
 	{
-		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z);
+		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z, pt.w, pt.o);
 	}
 
 	void ConvertFromPath64(const Path64& path, Point3d* points, int& count) {
@@ -205,6 +205,7 @@ namespace Clipper2Lib {
 	struct DeltaSelector
 	{
 		const bool* isAnotherSide;
+		const bool* isEnding;        // ?? NEW
 		double* left;
 		double* right;
 
@@ -213,9 +214,23 @@ namespace Clipper2Lib {
 			size_t curr_idx,
 			size_t) const
 		{
-			return (*isAnotherSide ? left[curr_idx] : right[curr_idx]) * 1e6;
+			if (*isEnding)
+			{
+				// swapped behavior
+				return (*isAnotherSide ?
+					right[curr_idx] :
+					left[curr_idx]) * 1e6;
+			}
+			else
+			{
+				// default behavior
+				return (*isAnotherSide ?
+					left[curr_idx] :
+					right[curr_idx]) * 1e6;
+			}
 		}
 	};
+
 	PINVOKE void InflateVariableBothSide(
 		const Point3d* inputPoints,
 		int inputCount,
@@ -223,8 +238,8 @@ namespace Clipper2Lib {
 		double* rightSideDeltas,
 		Point3d** outputPoints0,
 		int& outputCount0,
-		int** wTrueIndices,        // New output parameter
-		int& wTrueIndicesCount,    // New output parameter
+		int** wIndices,
+		int** offsetOriginalIndices,
 		JoinType joinType = JoinType::Round,
 		EndType endType = EndType::Butt,
 		double epsilonForSimplifying = 10.0,
@@ -245,9 +260,11 @@ namespace Clipper2Lib {
 		co.AddPaths(subject, joinType, endType);
 		DeltaSelector selector{
 			&co.is_another_side,
+			&co.ending_flag,
 			leftSideDeltas,
 			rightSideDeltas
 		};
+
 		co.SetDeltaCallback(selector);
 		// solution
 		Paths64 solution;
@@ -260,29 +277,37 @@ namespace Clipper2Lib {
 			*outputPoints0 = new Point3d[outputCount0];
 			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
 
-			// Collect indices where w is true
+			// Collect all  w values
 			std::vector<int> wTrueIndicesVec;
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
-				if (solution[0][i].w) {
-					wTrueIndicesVec.push_back(i);
-				}
+			std::vector<int> offsetOriginalIndicesVec;
+			*wIndices = new int[outputCount0];
+			*offsetOriginalIndices = new int[outputCount0];
+
+			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i)
+			{
+				wTrueIndicesVec.push_back(solution[0][i].w);
+
 			}
 
 			// Allocate and copy indices
-			wTrueIndicesCount = static_cast<int>(wTrueIndicesVec.size());
-			if (wTrueIndicesCount > 0) {
-				*wTrueIndices = new int[wTrueIndicesCount];
-				std::copy(wTrueIndicesVec.begin(), wTrueIndicesVec.end(), *wTrueIndices);
+			std::copy(wTrueIndicesVec.begin(), wTrueIndicesVec.end(), *wIndices);
+			// Collect all offset original indices
+
+			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
+				offsetOriginalIndicesVec.push_back(solution[0][i].o);
 			}
-			else {
-				*wTrueIndices = nullptr;
-			}
+
+			// Allocate and copy to output pointer
+			std::copy(offsetOriginalIndicesVec.begin(),
+				offsetOriginalIndicesVec.end(),
+				*offsetOriginalIndices);
+
 		}
 		else {
 			outputCount0 = 0;
 			*outputPoints0 = nullptr;
-			wTrueIndicesCount = 0;
-			*wTrueIndices = nullptr;
+			*wIndices = nullptr;
+			*offsetOriginalIndices = nullptr;
 		}
 	}
 	extern "C" __declspec(dllexport)
