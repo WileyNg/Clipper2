@@ -53,58 +53,6 @@ namespace Clipper2Lib {
 		delete[] points;
 	}
 
-	void SmoothZValuesAcrossPlateaus(Path64& path) {
-		if (path.size() < 3) return;
-
-		std::vector<int64_t> originalZ(path.size());
-		for (size_t i = 0; i < path.size(); i++) {
-			originalZ[i] = path[i].z;
-		}
-
-		// Find plateau boundaries (first occurrence of each unique z value)
-		std::vector<std::pair<size_t, int64_t>> keyPoints; // (index, z-value)
-		keyPoints.push_back({ 0, originalZ[0] });
-
-		for (size_t i = 1; i < path.size(); i++) {
-			if (originalZ[i] != originalZ[i - 1]) {
-				keyPoints.push_back({ i, originalZ[i] });
-			}
-		}
-
-		// Add the last point if it's not already a key point
-		if (keyPoints.back().first != path.size() - 1) {
-			keyPoints.push_back({ path.size() - 1, originalZ.back() });
-		}
-
-		// Interpolate across the entire path using key points
-		for (size_t i = 0; i < path.size(); i++) {
-			// Find which segment this index falls into
-			for (size_t j = 0; j < keyPoints.size() - 1; j++) {
-				size_t startIdx = keyPoints[j].first;
-				size_t endIdx = keyPoints[j + 1].first;
-
-				if (i >= startIdx && i <= endIdx) {
-					int64_t startZ = keyPoints[j].second;
-					int64_t endZ = keyPoints[j + 1].second;
-					double t = static_cast<double>(i - startIdx) / static_cast<double>(endIdx - startIdx);
-					path[i].z = static_cast<int64_t>(startZ + t * (endZ - startZ));
-					break;
-				}
-			}
-		}
-	}
-	bool IsPathClosed(const Point3d* points, int count) {
-		if (count < 2) return false;
-
-		const Point3d& first = points[0];
-		const Point3d& last = points[count - 1];
-
-		// Compare with small epsilon for floating point tolerance
-		const double epsilon = 1e-9;
-		return (std::abs(first.x - last.x) < epsilon &&
-			std::abs(first.y - last.y) < epsilon &&
-			std::abs(first.z - last.z) < epsilon);
-	}
 
 	PINVOKE void Inflate(
 		const Point3d* inputPoints,
@@ -112,40 +60,46 @@ namespace Clipper2Lib {
 		double  delta,
 		Point3d** outputPoints0,
 		int& outputCount0,
+		int** offsetOriginalIndices,
+		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt,
-		double epsilonForSimplifying = 10.0,
-		bool simplifyBeforeOffset = true,
-		bool smoothZ = true,
-		bool simplifyPath = true
+		EndType endType = EndType::Butt
 	)
 	{
 		Path64 outPath;
 		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
-		bool isClosedPath = IsPathClosed(inputPoints, inputCount);
-		if (isClosedPath)
-			if (endType != EndType::Round)
-				endType = EndType::Polygon;
 
-		if (simplifyBeforeOffset) {
-			inputPath = Clipper2Lib::SimplifyPath(inputPath, epsilonForSimplifying, isClosedPath);
-		}
+		float miter_limit = 1.0;
 
-		Paths64 outPaths = Clipper2Lib::InflatePaths(
+
+		Paths64 solution = Clipper2Lib::InflatePaths(
 			Paths64{ inputPath }, // expects Paths64
 			delta * 1e6,        // scale delta as in other usages
 			joinType,
 			endType,
-			3,
-			100// assuming this is miter limit or arc tolerance
+			miter_limit,
+			arc_tolerance// assuming this is miter limit or arc tolerance
 		);
 
 		// Convert the first output path to Point3d array
-		if (!outPaths.empty()) {
-			outPaths[0].push_back(outPaths[0].front());
-			outputCount0 = static_cast<int>(outPaths[0].size());
+		if (!solution.empty()) {
+			solution[0].push_back(solution[0].front());
+			outputCount0 = static_cast<int>(solution[0].size());
 			*outputPoints0 = new Point3d[outputCount0];
-			ConvertFromPath64(outPaths[0], *outputPoints0, outputCount0);
+			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
+
+			std::vector<int> offsetOriginalIndicesVec;
+			*offsetOriginalIndices = new int[outputCount0];
+			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
+				offsetOriginalIndicesVec.push_back(solution[0][i].o);
+			}
+
+			// Allocate and copy to output pointer
+			std::copy(offsetOriginalIndicesVec.begin(),
+				offsetOriginalIndicesVec.end(),
+				*offsetOriginalIndices);
+
+
 		}
 		else {
 			outputCount0 = 0;
@@ -158,23 +112,19 @@ namespace Clipper2Lib {
 		double* deltas,
 		Point3d** outputPoints0,
 		int& outputCount0,
+		int** offsetOriginalIndices,
+		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt,
-		double epsilonForSimplifying = 10.0,
-		bool simplifyBeforeOffset = true,
-		bool smoothZ = true,
-		bool simplifyPath = true
+		EndType endType = EndType::Butt
 	)
 	{
 		Path64 outPath;
 		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
-		bool isClosedPath = IsPathClosed(inputPoints, inputCount);
 
-		if (simplifyBeforeOffset) {
-			inputPath = Clipper2Lib::SimplifyPath(inputPath, epsilonForSimplifying, isClosedPath);
-		}
 
-		ClipperOffset co;
+		float miter_limit = 1.0;
+		ClipperOffset co(miter_limit, arc_tolerance);
+
 		Paths64 subject;
 		subject.push_back(inputPath);
 
@@ -188,7 +138,7 @@ namespace Clipper2Lib {
 
 		//  solution
 		Paths64 solution;
-		co.Execute(1.0, solution);
+		co.Execute(1e6, solution);
 
 		// Convert the first output path to Point3d array
 		if (!solution.empty()) {
@@ -196,6 +146,18 @@ namespace Clipper2Lib {
 			outputCount0 = static_cast<int>(solution[0].size());
 			*outputPoints0 = new Point3d[outputCount0];
 			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
+
+			std::vector<int> offsetOriginalIndicesVec;
+			*offsetOriginalIndices = new int[outputCount0];
+			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
+				offsetOriginalIndicesVec.push_back(solution[0][i].o);
+			}
+
+			// Allocate and copy to output pointer
+			std::copy(offsetOriginalIndicesVec.begin(),
+				offsetOriginalIndicesVec.end(),
+				*offsetOriginalIndices);
+
 		}
 		else {
 			outputCount0 = 0;
@@ -240,26 +202,25 @@ namespace Clipper2Lib {
 		int& outputCount0,
 		int** wIndices,
 		int** offsetOriginalIndices,
+		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt,
-		double epsilonForSimplifying = 10.0,
-		bool simplifyBeforeOffset = true,
-		bool smoothZ = true,
-		bool simplifyPath = true
+		EndType endType = EndType::Butt
 	)
 	{
 		Path64 outPath;
 		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
-		bool isClosedPath = IsPathClosed(inputPoints, inputCount);
-		if (simplifyBeforeOffset) {
-			inputPath = Clipper2Lib::SimplifyPath(inputPath, epsilonForSimplifying, isClosedPath);
-		}
-		ClipperOffset co;
 		Paths64 subject;
+
+
+
 		subject.push_back(inputPath);
+
+		float miter_limit = 1.0;
+		ClipperOffset co(miter_limit, arc_tolerance);
+
 		co.AddPaths(subject, joinType, endType);
 		DeltaSelector selector{
-			&co.is_another_side,
+ 			&co.is_another_side,
 			&co.ending_flag,
 			leftSideDeltas,
 			rightSideDeltas
@@ -268,7 +229,8 @@ namespace Clipper2Lib {
 		co.SetDeltaCallback(selector);
 		// solution
 		Paths64 solution;
-		co.Execute(1.0, solution);
+		
+		co.Execute(1e6, solution);
 
 		// Convert the first output path to Point3d array
 		if (!solution.empty()) {

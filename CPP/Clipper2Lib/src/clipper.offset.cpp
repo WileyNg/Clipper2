@@ -199,8 +199,10 @@ namespace Clipper2Lib {
 		{
 			double abs_delta = std::abs(group_delta_);
 #ifdef USINGZ
-			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending? 0: side, ending? j:path[j].o);
-			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending ? 0 : side, ending ? j : path[j].o);
+			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending? 0: side, static_cast<int>(j)
+			);
+			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending ? 0 : side, static_cast<int>(j)
+			);
 #else
 			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y);
 			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y);
@@ -209,8 +211,10 @@ namespace Clipper2Lib {
 		else
 		{
 #ifdef USINGZ
-			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending ? 0 : side, ending ? j : path[j].o);
-			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending ? 0 : side, ending ? j : path[j].o);
+			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending ? 0 : side, static_cast<int>(j)
+			);
+			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending ? 0 : side, static_cast<int>(j)
+			);
 #else
 			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y);
 			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y);
@@ -309,22 +313,17 @@ namespace Clipper2Lib {
 		// ---------------------------------------------------
 		// 1) Determine delta range
 		// ---------------------------------------------------
-		double start_delta = group_delta_;
+			double start_delta = group_delta_;
 		double end_delta = group_delta_;
-
 		if (ending_flag && deltaCallback64_) {
-			start_delta = deltaCallback64_(path, norms, j, k); 
+			start_delta = deltaCallback64_(path, norms, j, k);
 		}
-
 		// ---------------------------------------------------
 		// 2) Compute arc steps
 		// ---------------------------------------------------
 		int steps = static_cast<int>(
 			std::ceil(steps_per_rad_ * std::abs(angle)));
-
 		if (steps < 1) steps = 1;
-
-		double delta_step = (end_delta - start_delta) / steps;
 
 		// ---------------------------------------------------
 		// 3) Initial direction (unit normal)
@@ -350,7 +349,7 @@ namespace Clipper2Lib {
 		}
 
 		// ---------------------------------------------------
-		// 5) Generate rotating + interpolating arc
+		// 5) Generate rotating + interpolating arc with Gaussian
 		// ---------------------------------------------------
 		for (int i = 1; i < steps; ++i)
 		{
@@ -360,9 +359,18 @@ namespace Clipper2Lib {
 				dir.x * step_sin_ + step_cos_ * dir.y
 			);
 
-			double curr_delta = start_delta + delta_step * i;
-			PointD offsetVec(dir.x * curr_delta, dir.y * curr_delta);
+			// Gaussian-like smooth interpolation
+			double t = static_cast<double>(i) / steps;
 
+			// Smoothstep: smooth S-curve transition
+			double smoothT = t * t * (3.0 - 2.0 * t);
+
+			// Linear interpolation with smooth transition
+			// Guarantees middle = (start_delta + end_delta) / 2
+			// When start_delta == end_delta, curr_delta = start_delta (constant)
+			double curr_delta = start_delta + (end_delta - start_delta) * smoothT;
+
+			PointD offsetVec(dir.x * curr_delta, dir.y * curr_delta);
 #ifdef USINGZ
 			path_out.emplace_back(
 				pt.x + offsetVec.x,
@@ -544,17 +552,24 @@ namespace Clipper2Lib {
 		solution->emplace_back(path_out);
 	}
 
+
 	void ClipperOffset::DoGroupOffset(Group& group)
 	{
-		if (group.end_type == EndType::Polygon)
-		{
-			// a straight path (2 points) can now also be 'polygon' offset
-			// where the ends will be treated as (180 deg.) joins
-			if (!group.lowest_path_idx.has_value()) delta_ = std::abs(delta_);
-			group_delta_ = (group.is_reversed) ? -delta_ : delta_;
-		}
-		else
-			group_delta_ = std::abs(delta_);// *0.5;
+
+		if (!group.lowest_path_idx.has_value()) delta_ = std::abs(delta_);
+		group_delta_ = (group.is_reversed) ? -delta_ : delta_;
+
+
+		// Commented below as group.end_type should always be Polygon.
+		//if (group.end_type == EndType::Polygon)
+		//{
+		//	// a straight path (2 points) can now also be 'polygon' offset
+		//	// where the ends will be treated as (180 deg.) joins
+		//	if (!group.lowest_path_idx.has_value()) delta_ = std::abs(delta_);
+		//	group_delta_ = (group.is_reversed) ? -delta_ : delta_;
+		//}
+		//else
+		//	group_delta_ = std::abs(delta_);// *0.5;
 
 		double abs_delta = std::fabs(group_delta_);
 		join_type_ = group.join_type;
@@ -635,6 +650,8 @@ namespace Clipper2Lib {
 				EndType::Square;
 
 			BuildNormals(*path_in_it);
+
+
 			if (end_type_ == EndType::Polygon) OffsetPolygon(group, *path_in_it);
 			else if (end_type_ == EndType::Joined) OffsetOpenJoined(group, *path_in_it);
 			else OffsetOpenPath(group, *path_in_it);
@@ -682,6 +699,8 @@ namespace Clipper2Lib {
 		if (groups_.size() == 0) return;
 		solution->reserve(CalcSolutionCapacity());
 
+
+		
 		if (std::abs(delta) < 0.5) // ie: offset is insignificant
 		{
 			Paths64::size_type sol_size = 0;

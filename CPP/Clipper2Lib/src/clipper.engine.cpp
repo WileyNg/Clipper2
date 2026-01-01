@@ -11,6 +11,10 @@
 #include "clipper2/clipper.h"
 #include <stdexcept>
 
+#define NOMINMAX
+#include <chrono>
+#include <Windows.h>
+#include <string>
 // https://github.com/AngusJohnson/Clipper2/discussions/334
 // #discussioncomment-4248602
 #if defined(_MSC_VER) && ( defined(_M_AMD64) || defined(_M_X64) )
@@ -139,6 +143,8 @@ namespace Clipper2Lib {
         return (e.top.y == e.bot.y);
     }
 
+    static int call_count = 0;
+    static int total_actives = 0;
 
     inline bool IsHeadingRightHorz(const Active& e)
     {
@@ -2139,6 +2145,8 @@ namespace Clipper2Lib {
         int64_t y;
         if (ct == ClipType::NoClip || !PopScanline(y)) return true;
 
+        call_count = 0;
+        total_actives = 0;
         while (succeeded_)
         {
             InsertLocalMinimaIntoAEL(y);
@@ -2155,6 +2163,10 @@ namespace Clipper2Lib {
             DoTopOfScanbeam(y);
             while (PopHorz(e)) DoHorizontal(*e);
         }
+        OutputDebugStringA(("Total calls: " + std::to_string(call_count) +
+            ", avg actives=" + std::to_string(call_count > 0 ? total_actives / call_count : 0) + "\n").c_str());
+
+        
         if (succeeded_) ProcessHorzJoins();
         return succeeded_;
     }
@@ -2394,6 +2406,13 @@ namespace Clipper2Lib {
     bool ClipperBase::BuildIntersectList(const int64_t top_y)
     {
         if (!actives_ || !actives_->next_in_ael) return false;
+        int active_count = 0;
+        Active* e = actives_;
+        while (e) { active_count++; e = e->next_in_ael; }
+
+        total_actives += active_count;
+        call_count++;
+
 
         //Calculate edge positions at the top of the current scanbeam, and from this
         //we will determine the intersections required to reach these new positions.
