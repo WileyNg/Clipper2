@@ -820,8 +820,8 @@ namespace Clipper2Lib {
             else if (ip == e2.bot) ip.z = e2.bot.z;
             else if (ip == e2.top) ip.z = e2.top.z;
             else ip.z = e1.bot.z;
-            ip.w = e1.bot.w;
-            ip.o = e1.bot.o;
+            ip.w = e1.top.w;
+            ip.o = e1.top.o;
             zCallback_(e1.bot, e1.top, e2.bot, e2.top, ip);
         }
         else
@@ -831,8 +831,8 @@ namespace Clipper2Lib {
             else if (ip == e1.bot) ip.z = e1.bot.z;
             else if (ip == e1.top) ip.z = e1.top.z;
             else ip.z = e1.bot.z;
-            ip.w = e1.bot.w;
-			ip.o = e1.bot.o;
+            ip.w = e1.top.w;
+			ip.o = e1.top.o;
             zCallback_(e2.bot, e2.top, e1.bot, e1.top, ip);
         }
     }
@@ -2594,7 +2594,7 @@ namespace Clipper2Lib {
         if (IsHotEdge(horz))
         {
 #ifdef USINGZ
-            OutPt* op = AddOutPt(horz, Point64(horz.curr_x, y, horz.bot.z, horz.bot.w, horz.bot.o));
+            OutPt* op = AddOutPt(horz, Point64(horz.curr_x, y, horz.top.z, horz.top.w, horz.top.o));
 #else
             OutPt* op = AddOutPt(horz, Point64(horz.curr_x, y));
 #endif

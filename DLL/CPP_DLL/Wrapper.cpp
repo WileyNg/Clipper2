@@ -112,7 +112,7 @@ namespace Clipper2Lib {
 		double* deltas,
 		Point3d** outputPoints0,
 		int& outputCount0,
-		int** offsetOriginalIndices,
+		int** offsetOriginalIndices, 
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
 		EndType endType = EndType::Butt
@@ -139,7 +139,6 @@ namespace Clipper2Lib {
 		//  solution
 		Paths64 solution;
 		co.Execute(1e6, solution);
-
 		// Convert the first output path to Point3d array
 		if (!solution.empty()) {
 			solution[0].push_back(solution[0].front());
@@ -231,6 +230,7 @@ namespace Clipper2Lib {
 		Paths64 solution;
 		
 		co.Execute(1e6, solution);
+		SimplifyPaths(solution, 1 * 1e6);
 
 		// Convert the first output path to Point3d array
 		if (!solution.empty()) {

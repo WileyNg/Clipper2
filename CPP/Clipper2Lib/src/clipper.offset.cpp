@@ -513,6 +513,9 @@ namespace Clipper2Lib {
 				break;
 			}
 		}
+		// if there is only 2 points in the path, then OffsetPoint before this line never runs. IsEnding remains true and the group delta won't change.
+		// here we just manually set it to false.
+		ending_flag = false;
 
 		size_t highI = path.size() - 1;
 		// offset the left side going forward
@@ -524,6 +527,7 @@ namespace Clipper2Lib {
 		for (size_t i = highI; i > 0; --i)
 			norms[i] = PointD(-norms[i - 1].x, -norms[i - 1].y);
 		norms[0] = norms[highI];
+
 
 		// do the line end cap
 		if (deltaCallback64_)
