@@ -10,6 +10,12 @@
 #ifndef CLIPPER_OFFSET_H_
 #define CLIPPER_OFFSET_H_
 
+#define NOMINMAX
+#include <sstream>
+#include <chrono>
+#include <Windows.h>
+#include <string>
+
 #include "clipper.core.h"
 #include "clipper.engine.h"
 #include <optional>

@@ -10,6 +10,12 @@
 #ifndef CLIPPER_ENGINE_H
 #define CLIPPER_ENGINE_H
 
+#define NOMINMAX
+#include <sstream>
+#include <chrono>
+#include <Windows.h>
+#include <string>
+
 #include "clipper2/clipper.core.h"
 #include <queue>
 #include <functional>

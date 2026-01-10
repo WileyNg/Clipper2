@@ -674,11 +674,11 @@ namespace Clipper2Lib {
 		else if (bot2.z && (bot2.z == top1.z)) ip.z = bot2.z;
 		else if (top1.z && (top1.z == top2.z)) ip.z = top1.z;
 		else if (zCallback64_) zCallback64_(bot1, top1, bot2, top2, ip);
-		else ip.z = top1.z;
-		ip.w = top1.w;
-		ip.o = top1.o;
-		ip.p_i = top1.p_i;
-	}
+		//else ip.z = top1.z;
+		//		ip.w = top1.w;
+		//		ip.o = top1.o;
+		//		ip.p_i = top1.p_i;
+			}
 #endif
 
 	size_t ClipperOffset::CalcSolutionCapacity()
