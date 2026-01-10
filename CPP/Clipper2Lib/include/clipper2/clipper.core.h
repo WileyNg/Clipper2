@@ -120,10 +120,11 @@ namespace Clipper2Lib
         T y;
 #ifdef USINGZ
         z_type z;
-      int w;
+		int w; // which side the offsetted point is on relative to the input path, where 0 is ending, 1 is left side, 2 is right side
       int o; // original index from input
+	  int p_i; //original path index from input
         template <typename T2>
-      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = false, const int o_ = 0)
+      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = 0)
         {
             if constexpr (std::is_integral_v<T> &&
                 is_round_invocable<T2>::value && !std::is_integral_v<T2>)
@@ -133,6 +134,7 @@ namespace Clipper2Lib
                 z = z_;
                 w = w_;
 				o = o_;
+                p_i = p_i_;
             }
             else
             {
@@ -141,45 +143,53 @@ namespace Clipper2Lib
                 z = z_;
                 w = w_;
 				o = o_;
+                p_i = p_i_;
+
             }
         }
 
-      explicit Point() : x(0), y(0), z(0), w(false) {};
+      explicit Point() : x(0), y(0), z(0), w(0), o(0), p_i(0) {};
 
         template <typename T2>
-      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = false, const int o_ = 0)
+      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = 0)
         {
-          Init(x_, y_, z_, w_, o_);
+          Init(x_, y_, z_, w_, o_, p_i_);
         }
 
-        template <typename T2>
-        explicit Point(const Point<T2>& p)
-        {
-          Init(p.x, p.y, p.z, p.w, p.o);
-        }
-
-        template <typename T2>
-        explicit Point(const Point<T2>& p, z_type z_)
-        {
-          Init(p.x, p.y, z_, p.w, p.o);
+      template <typename T2>
+      Point(const Point<T2>& p)  // Remove 'explicit'
+      {
+          Init(p.x, p.y, p.z, p.w, p.o, p.p_i);
       }
 
       template <typename T2>
-      explicit Point(const Point<T2>& p, z_type z_, int w_, int o_ )
+      Point(const Point<T2>& p, z_type z_)  // Remove 'explicit'
       {
-          Init(p.x, p.y, z_, w_, o_);
-        }
+          Init(p.x, p.y, z_, p.w, p.o, p.p_i);
+      }
+
+      // ADD THIS ONE
+      template <typename T2>
+      Point(const Point<T2>& p, z_type z_, int w_, int o_)
+      {
+          Init(p.x, p.y, z_, w_, o_, 0);
+      }
+      template <typename T2>
+      Point(const Point<T2>& p, z_type z_, int w_, int o_, int p_i_)  // Remove 'explicit'
+      {
+          Init(p.x, p.y, z_, w_, o_, p_i_);  // Also fix: p.p_i -> p_i_
+      }
 
         Point operator * (const double scale) const
         {
-          return Point(x * scale, y * scale, z, w, o);
+          return Point(x * scale, y * scale, z, w, o, p_i);
         }
 
         void SetZ(const z_type z_value) { z = z_value; }
 
         friend std::ostream& operator<<(std::ostream& os, const Point& point)
         {
-          os << point.x << "," << point.y << "," << point.z << "," << point.w << "," << point.o;
+          os << point.x << "," << point.y << "," << point.z << "," << point.w << "," << point.o << "," << point.p_i;
             return os;
         }
 
@@ -550,7 +560,7 @@ namespace Clipper2Lib
 #ifdef USINGZ
         std::transform(path.begin(), path.end(), back_inserter(result),
             [scale_x, scale_y](const auto& pt)
-            { return Point<T1>(pt.x * scale_x, pt.y * scale_y, pt.z,pt.w, pt.o); });
+            { return Point<T1>(pt.x * scale_x, pt.y * scale_y, pt.z,pt.w, pt.o,pt.p_i); });
 #else
         std::transform(path.begin(), path.end(), back_inserter(result),
             [scale_x, scale_y](const auto& pt)
@@ -957,6 +967,8 @@ namespace Clipper2Lib
         ip.z = ln1a.z;
 		ip.w = ln1a.w;
         ip.o = ln1a.o;
+		ip.p_i = ln1a.p_i;
+
 #endif
         return true;
     }
@@ -984,6 +996,7 @@ namespace Clipper2Lib
             ip.z = ln1a.z;
             ip.w = ln1a.w;
 			ip.o = ln1a.o;
+			ip.p_i = ln1a.p_i;
 #endif
         }
         return true;
@@ -994,7 +1007,7 @@ namespace Clipper2Lib
     inline Point<T> TranslatePoint(const Point<T>& pt, double dx, double dy)
     {
 #ifdef USINGZ
-        return Point<T>(pt.x + dx, pt.y + dy, pt.z,pt.w, pt.o);
+        return Point<T>(pt.x + dx, pt.y + dy, pt.z,pt.w, pt.o, pt.p_i);
 #else
         return Point<T>(pt.x + dx, pt.y + dy);
 #endif
@@ -1005,7 +1018,7 @@ namespace Clipper2Lib
     inline Point<T> ReflectPoint(const Point<T>& pt, const Point<T>& pivot)
     {
 #ifdef USINGZ
-        return Point<T>(pivot.x + (pivot.x - pt.x), pivot.y + (pivot.y - pt.y), pt.z, pt.w, pt.o);
+        return Point<T>(pivot.x + (pivot.x - pt.x), pivot.y + (pivot.y - pt.y), pt.z, pt.w, pt.o, pt.p_i);
 #else
         return Point<T>(pivot.x + (pivot.x - pt.x), pivot.y + (pivot.y - pt.y));
 #endif

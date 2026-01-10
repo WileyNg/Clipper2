@@ -80,6 +80,7 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		void OffsetPoint(Group& group, const Path64& path, size_t j, size_t k);
 		void DoGroupOffset(Group& group);
 		void ExecuteInternal(double delta);
+		void ExecuteInternalWithoutUnion(double delta);
 	public:
 		bool is_another_side = false;
 		bool ending_flag = false;
@@ -100,6 +101,7 @@ enum class JoinType { Square, Bevel, Miter,Round  };
 		void Clear() { groups_.clear(); norms.clear(); };
 
 		void Execute(double delta, Paths64& sols_64);
+		void ExecuteWithoutUnion(double delta, Paths64& sols_64);
 		void Execute(double delta, PolyTree64& polytree);
 		void Execute(DeltaCallback64 delta_cb, Paths64& paths);
 

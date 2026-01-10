@@ -104,7 +104,7 @@ namespace Clipper2Lib {
 	static inline Point64 GetPerpendic(const Point64& pt, const PointD& norm, double delta)
 	{
 #ifdef USINGZ
-		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z,pt.w, pt.o);
+		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z,pt.w, pt.o, pt.p_i);
 #else
 		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta);
 #endif
@@ -113,7 +113,7 @@ namespace Clipper2Lib {
 	inline PointD GetPerpendicD(const Point64& pt, const PointD& norm, double delta)
 	{
 #ifdef USINGZ
-		return PointD(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z, pt.w, pt.o);
+		return PointD(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z, pt.w, pt.o, pt.p_i);
 #else
 		return PointD(pt.x + norm.x * delta, pt.y + norm.y * delta);
 #endif
@@ -129,6 +129,7 @@ namespace Clipper2Lib {
 			pt.z = pt.z;
 			pt.w = pt.w;
 			pt.o = pt.o;
+			pt.p_i = pt.p_i;
 #endif
 		}
 	}
@@ -407,6 +408,7 @@ namespace Clipper2Lib {
 		Point64  node = path[j];
 		node.w = side;
 		node.o = j;
+		node.p_i = path[j].p_i;
 		double sin_a = CrossProduct(norms[j], norms[k]);
 		double cos_a = DotProduct(norms[j], norms[k]);
 		if (sin_a > 1.0) sin_a = 1.0;
@@ -626,6 +628,7 @@ namespace Clipper2Lib {
 						p.z = pt.z;
 						p.w = pt.w;
 						p.o = pt.o;
+						p.p_i = pt.p_i;
 					}
 #endif
 				}
@@ -640,6 +643,7 @@ namespace Clipper2Lib {
 						p.z = pt.z;
 						p.w = pt.w;
 						p.o = pt.o;
+						p.p_i = pt.p_i;
 					}
 #endif
 				}
@@ -673,6 +677,7 @@ namespace Clipper2Lib {
 		else ip.z = top1.z;
 		ip.w = top1.w;
 		ip.o = top1.o;
+		ip.p_i = top1.p_i;
 	}
 #endif
 
@@ -760,7 +765,43 @@ namespace Clipper2Lib {
 				c.Execute(ClipType::Union, FillRule::Positive, *solution);
 		}
 	}
+	void ClipperOffset::ExecuteInternalWithoutUnion(double delta)
+	{
+		error_code_ = 0;
+		if (groups_.size() == 0) return;
+		solution->reserve(CalcSolutionCapacity());
 
+
+
+		if (std::abs(delta) < 0.5) // ie: offset is insignificant
+		{
+			Paths64::size_type sol_size = 0;
+			for (const Group& group : groups_) sol_size += group.paths_in.size();
+			solution->reserve(sol_size);
+			for (const Group& group : groups_)
+				copy(group.paths_in.begin(), group.paths_in.end(), back_inserter(*solution));
+		}
+		else
+		{
+
+			temp_lim_ = (miter_limit_ <= 1) ?
+				2.0 :
+				2.0 / (miter_limit_ * miter_limit_);
+
+			delta_ = delta;
+			std::vector<Group>::iterator git;
+			for (git = groups_.begin(); git != groups_.end(); ++git)
+			{
+				DoGroupOffset(*git);
+				if (!error_code_) continue; // all OK
+				solution->clear();
+			}
+		}
+
+		if (!solution->size()) return;
+
+	}
+	
 	void ClipperOffset::Execute(double delta, Paths64& paths64)
 	{
 		paths64.clear();
@@ -768,7 +809,13 @@ namespace Clipper2Lib {
 		solution_tree = nullptr;
 		ExecuteInternal(delta);
 	}
-
+	void ClipperOffset::ExecuteWithoutUnion(double delta, Paths64& paths64)
+	{
+		paths64.clear();
+		solution = &paths64;
+		solution_tree = nullptr;
+		ExecuteInternalWithoutUnion(delta);
+	}
 
 	void ClipperOffset::Execute(double delta, PolyTree64& polytree)
 	{

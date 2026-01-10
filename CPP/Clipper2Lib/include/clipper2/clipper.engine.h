@@ -557,6 +557,7 @@ namespace Clipper2Lib {
 			pt.z = tmp.z; // only update 'z'
 			pt.w = tmp.w;
 			pt.o = tmp.o;
+			pt.p_i = tmp.p_i;
 		};
 
 		void CheckCallback()
