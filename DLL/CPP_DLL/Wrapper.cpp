@@ -307,10 +307,35 @@ namespace Clipper2Lib {
 		else
 			ip.z = top1.z;
 
-		// Preserve w and o from top1
-		ip.w = top1.w;
-		ip.o = top1.o;
-		ip.p_i = top1.p_i;
+		// FIXED: Only set w, o, p_i if ip doesn't already have valid metadata
+		if (ip.p_i == -1 || ip.o == -1 || ip.w == -1)
+		{
+			// ip needs metadata - choose from a valid source (prefer top1)
+			if (top1.p_i != -1)
+			{
+				ip.w = top1.w;
+				ip.o = top1.o;
+				ip.p_i = top1.p_i;
+			}
+			else if (bot1.p_i != -1)
+			{
+				ip.w = bot1.w;
+				ip.o = bot1.o;
+				ip.p_i = bot1.p_i;
+			}
+			else if (top2.p_i != -1)
+			{
+				ip.w = top2.w;
+				ip.o = top2.o;
+				ip.p_i = top2.p_i;
+			}
+			else if (bot2.p_i != -1)
+			{
+				ip.w = bot2.w;
+				ip.o = bot2.o;
+				ip.p_i = bot2.p_i;
+			}
+		}
 	}
 
 	PINVOKE void Union(
