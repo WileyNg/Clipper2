@@ -3,6 +3,7 @@
 
 #include "clipper2/clipper.offset.h"
 #include "clipper2/clipper.h"
+#include <combaseapi.h> 
 
 namespace Clipper2Lib {
 
@@ -34,7 +35,7 @@ namespace Clipper2Lib {
 		}
 		return path;
 	}
-	Path64 ConvertToPath64WithPathIndex(const Point3d* points, int count, int pathIndex) {
+	Path64 ConvertToPath64WithPathIndex(const Point3d* points, int count, int pathIndex, const int* wList, const int* oList) {
 		Path64 path;
 		path.reserve(count);
 		for (int i = 0; i < count; i++) {
@@ -43,12 +44,15 @@ namespace Clipper2Lib {
 			int64_t y = static_cast<int64_t>(points[i].y * scale);
 			int64_t z = static_cast<int64_t>(points[i].z * scale);
 
+			int w = (wList != nullptr) ? wList[i] : 0;
+			int o = (oList != nullptr) ? oList[i] : 0;
+
 			Point64 pt;
-			pt.Init(x, y, z, 0, 0, pathIndex);
+			pt.Init(x, y, z, w, o, pathIndex);
 			path.push_back(pt);
 		}
 		return path;
-	}	
+	}
 	static inline Point64 GetPerpendic(const Point64& pt, const PointD& norm, double delta)
 	{
 		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z, pt.w, pt.o);
@@ -313,12 +317,14 @@ namespace Clipper2Lib {
 		const Point3d** inputPolylines,
 		const int* inputCounts,
 		int polylineCount,
-		Point3d*** outputPolylines,        // Array of output polyline pointers
-		int** outputCounts,                 // Array of vertex counts for each output polyline
-		int& outputPolylineCount,           // Number of output polylines
-		int*** wIndices,                    // Array of w indices for each output polyline
-		int*** offsetOriginalIndices,       // Array of o indices for each output polyline
-		int*** pathIndices,                 // Array of p_i (path index) for each output polyline
+		int** inputWList,
+		int** inputOList,
+		Point3d*** outputPolylines,
+		int** outputCounts,
+		int& outputPolylineCount,
+		int*** wIndices,
+		int*** offsetOriginalIndices,
+		int*** pathIndices,
 		bool preserveCollinear = false,
 		FillRule fillRule = FillRule::Positive
 	)
@@ -326,25 +332,21 @@ namespace Clipper2Lib {
 		// Convert all input polylines to Path64
 		Paths64 subjects;
 		subjects.reserve(polylineCount);
-
 		for (int i = 0; i < polylineCount; ++i)
 		{
-			Path64 path = ConvertToPath64WithPathIndex(inputPolylines[i], inputCounts[i], i);
+			const int* wList = (inputWList != nullptr) ? inputWList[i] : nullptr;
+			const int* oList = (inputOList != nullptr) ? inputOList[i] : nullptr;
+			Path64 path = ConvertToPath64WithPathIndex(inputPolylines[i], inputCounts[i], i, wList, oList);
 			subjects.push_back(path);
 		}
 
 		// Perform union operation
 		Paths64 solution;
 		Clipper64 clipper;
-
-		// Set preserve collinear
 		clipper.PreserveCollinear(preserveCollinear);
-
 #ifdef USINGZ
-		// Set Z callback using standalone function
 		clipper.SetZCallback(UnionZCB);
 #endif
-
 		clipper.AddSubject(subjects);
 		clipper.Execute(ClipType::Union, fillRule, solution);
 
@@ -352,20 +354,25 @@ namespace Clipper2Lib {
 		if (!solution.empty())
 		{
 			outputPolylineCount = static_cast<int>(solution.size());
-			*outputPolylines = new Point3d * [outputPolylineCount];
-			*outputCounts = new int[outputPolylineCount];
-			*wIndices = new int* [outputPolylineCount];
-			*offsetOriginalIndices = new int* [outputPolylineCount];
-			*pathIndices = new int* [outputPolylineCount];
 
+			// Allocate outer arrays using CoTaskMemAlloc
+			*outputPolylines = (Point3d**)CoTaskMemAlloc(sizeof(Point3d*) * outputPolylineCount);
+			*outputCounts = (int*)CoTaskMemAlloc(sizeof(int) * outputPolylineCount);
+			*wIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
+			*offsetOriginalIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
+			*pathIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
+
+			// Allocate and fill inner arrays
 			for (int i = 0; i < outputPolylineCount; ++i)
 			{
 				int count = static_cast<int>(solution[i].size());
 				(*outputCounts)[i] = count;
-				(*outputPolylines)[i] = new Point3d[count];
-				(*wIndices)[i] = new int[count];
-				(*offsetOriginalIndices)[i] = new int[count];
-				(*pathIndices)[i] = new int[count];
+
+				// Allocate inner arrays using CoTaskMemAlloc
+				(*outputPolylines)[i] = (Point3d*)CoTaskMemAlloc(sizeof(Point3d) * count);
+				(*wIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
+				(*offsetOriginalIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
+				(*pathIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
 
 				ConvertFromPath64(solution[i], (*outputPolylines)[i], count);
 
@@ -388,6 +395,130 @@ namespace Clipper2Lib {
 			*pathIndices = nullptr;
 		}
 	}
+	PINVOKE void UnionAndIntersection(
+		const Point3d** subjectPolylines,
+		const int* subjectCounts,
+		int subjectPolylineCount,
+		int** subjectWList,              // NEW: Array of w indices for each subject polyline
+		int** subjectOList,              // NEW: Array of o indices for each subject polyline
+		const Point3d** clipPolylines,
+		const int* clipCounts,
+		int clipPolylineCount,
+		int** clipWList,                 // NEW: Array of w indices for each clip polyline
+		int** clipOList,                 // NEW: Array of o indices for each clip polyline
+		Point3d*** outputPolylines,      // Array of output polyline pointers
+		int** outputCounts,              // Array of vertex counts for each output polyline
+		int& outputPolylineCount,        // Number of output polylines
+		int*** wIndices,                 // Array of w indices for each output polyline
+		int*** offsetOriginalIndices,    // Array of o indices for each output polyline
+		int*** pathIndices,              // Array of p_i (path index) for each output polyline
+		bool preserveCollinear = false,
+		FillRule fillRule = FillRule::Positive
+	)
+	{
+		// Convert subject polylines to Path64
+	// Convert subject polylines to Path64
+		Paths64 subjects;
+		subjects.reserve(subjectPolylineCount);
+		for (int i = 0; i < subjectPolylineCount; ++i)
+		{
+			const int* wList = (subjectWList != nullptr) ? subjectWList[i] : nullptr;
+			const int* oList = (subjectOList != nullptr) ? subjectOList[i] : nullptr;
+			Path64 path = ConvertToPath64WithPathIndex(subjectPolylines[i], subjectCounts[i], i, wList, oList);
+			subjects.push_back(path);
+		}
+
+		// Convert clip polylines to Path64
+		Paths64 clips;
+		for (int i = 0; i < clipPolylineCount; ++i)
+		{
+			// Create arrays filled with -1 for clip polylines
+			int count = clipCounts[i];
+			int* wList = new int[count];
+			int* oList = new int[count];
+
+			// Fill with -1
+			for (int j = 0; j < count; ++j)
+			{
+				wList[j] = -1;
+				oList[j] = -1;
+			}
+
+			Path64 path = ConvertToPath64WithPathIndex(clipPolylines[i], clipCounts[i], -1, wList, oList);
+			clips.push_back(path);
+
+			// Clean up temporary arrays
+			delete[] wList;
+			delete[] oList;
+		}
+
+		// Perform union operation first
+		Paths64 unionSolution;
+		Clipper64 clipper;
+		clipper.PreserveCollinear(preserveCollinear);
+#ifdef USINGZ
+		clipper.SetZCallback(UnionZCB);
+#endif
+		clipper.AddSubject(subjects);
+		clipper.Execute(ClipType::Union, fillRule, unionSolution);
+
+		// Now perform intersection on the union result with the clip polylines
+		Paths64 solution;
+		clipper.Clear();
+		clipper.PreserveCollinear(preserveCollinear);
+#ifdef USINGZ
+		clipper.SetZCallback(UnionZCB);
+#endif
+		clipper.AddSubject(unionSolution);
+		clipper.AddClip(clips);
+		clipper.Execute(ClipType::Intersection, fillRule, solution);
+
+		// Convert results back to Point3d arrays
+		if (!solution.empty())
+		{
+			outputPolylineCount = static_cast<int>(solution.size());
+
+			// Allocate outer arrays using CoTaskMemAlloc
+			*outputPolylines = (Point3d**)CoTaskMemAlloc(sizeof(Point3d*) * outputPolylineCount);
+			*outputCounts = (int*)CoTaskMemAlloc(sizeof(int) * outputPolylineCount);
+			*wIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
+			*offsetOriginalIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
+			*pathIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
+
+			// Allocate and fill inner arrays
+			for (int i = 0; i < outputPolylineCount; ++i)
+			{
+				int count = static_cast<int>(solution[i].size());
+				(*outputCounts)[i] = count;
+
+				// Allocate inner arrays using CoTaskMemAlloc
+				(*outputPolylines)[i] = (Point3d*)CoTaskMemAlloc(sizeof(Point3d) * count);
+				(*wIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
+				(*offsetOriginalIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
+				(*pathIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
+
+				ConvertFromPath64(solution[i], (*outputPolylines)[i], count);
+
+				// Extract w, o, and p_i indices
+				for (int j = 0; j < count; ++j)
+				{
+					(*wIndices)[i][j] = solution[i][j].w;
+					(*offsetOriginalIndices)[i][j] = solution[i][j].o;
+					(*pathIndices)[i][j] = solution[i][j].p_i;
+				}
+			}
+		}
+		else
+		{
+			outputPolylineCount = 0;
+			*outputPolylines = nullptr;
+			*outputCounts = nullptr;
+			*wIndices = nullptr;
+			*offsetOriginalIndices = nullptr;
+			*pathIndices = nullptr;
+		}
+	}
+
 	PINVOKE void InflateVariableBothSideWithoutUnion(
 		const Point3d* inputPoints,
 		int inputCount,
@@ -396,7 +527,7 @@ namespace Clipper2Lib {
 		Point3d** outputPoints0,
 		int& outputCount0,
 		int** wIndices,
-		int** offsetOriginalIndices,
+		int** offsetOriginalIndices, 
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
 		EndType endType = EndType::Butt

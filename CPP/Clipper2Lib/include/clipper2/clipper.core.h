@@ -124,7 +124,7 @@ namespace Clipper2Lib
       int o; // original index from input
 	  int p_i; //original path index from input
         template <typename T2>
-      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = 0)
+      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = -1)
         {
             if constexpr (std::is_integral_v<T> &&
                 is_round_invocable<T2>::value && !std::is_integral_v<T2>)
@@ -148,10 +148,10 @@ namespace Clipper2Lib
             }
         }
 
-      explicit Point() : x(0), y(0), z(0), w(0), o(0), p_i(0) {};
+      explicit Point() : x(0), y(0), z(0), w(0), o(0), p_i(-1) {};
 
         template <typename T2>
-      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = 0)
+      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = -1)
         {
           Init(x_, y_, z_, w_, o_, p_i_);
         }
@@ -172,7 +172,7 @@ namespace Clipper2Lib
       template <typename T2>
       Point(const Point<T2>& p, z_type z_, int w_, int o_)
       {
-          Init(p.x, p.y, z_, w_, o_, 0);
+          Init(p.x, p.y, z_, w_, o_, -1);
       }
       template <typename T2>
       Point(const Point<T2>& p, z_type z_, int w_, int o_, int p_i_)  // Remove 'explicit'
@@ -982,7 +982,6 @@ namespace Clipper2Lib
         double dy1 = static_cast<double>(ln1b.y - ln1a.y);
         double dx2 = static_cast<double>(ln2b.x - ln2a.x);
         double dy2 = static_cast<double>(ln2b.y - ln2a.y);
-
         double det = dy1 * dx2 - dy2 * dx1;
         if (det == 0.0) return false;
         double t = ((ln1a.x - ln2a.x) * dy2 - (ln1a.y - ln2a.y) * dx2) / det;
@@ -993,10 +992,13 @@ namespace Clipper2Lib
             ip.x = static_cast<T>(ln1a.x + t * dx1);
             ip.y = static_cast<T>(ln1a.y + t * dy1);
 #ifdef USINGZ
-            ip.z = ln1a.z;
-            ip.w = ln1a.w;
-			ip.o = ln1a.o;
-			ip.p_i = ln1a.p_i;
+            // Choose source point based on which one doesn't have -1 for p_i
+            const Point<T>& sourcePoint = (ln1a.p_i != -1) ? ln1a : ln1b;
+
+            ip.z = sourcePoint.z;
+            ip.w = sourcePoint.w;
+            ip.o = sourcePoint.o;
+            ip.p_i = sourcePoint.p_i;
 #endif
         }
         return true;

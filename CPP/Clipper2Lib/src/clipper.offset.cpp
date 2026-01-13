@@ -145,8 +145,11 @@ namespace Clipper2Lib {
 		bool is_joined =
 			(end_type == EndType::Polygon) ||
 			(end_type == EndType::Joined);
-		for (Path64& p : paths_in)
-			StripDuplicates(p, is_joined);
+
+		// removed strip duplicates as we need the original path to match the path being processed. 
+		// in rhino, duplicates should be removed in Union anyway
+		//for (Path64& p : paths_in)
+		//	StripDuplicates(p, is_joined);
 
 		if (end_type == EndType::Polygon)
 		{

@@ -814,35 +814,97 @@ namespace Clipper2Lib {
 	void ClipperBase::SetZ(const Active& e1, const Active& e2, Point64& ip)
 	{
 		if (!zCallback_) return;
-		// prioritize subject over clip vertices by passing
-		// subject vertices before clip vertices in the callback
-		if (GetPolyType(e1) == PathType::Subject)
+
+		// Determine which edge is subject and which is clip
+		bool e1IsSubject = (GetPolyType(e1) == PathType::Subject);
+		bool e2IsSubject = (GetPolyType(e2) == PathType::Subject);
+
+		// ALWAYS prioritize subject edge metadata over clip edge metadata
+		const Active* subjectEdge = nullptr;
+		const Active* clipEdge = nullptr;
+
+		if (e1IsSubject && !e2IsSubject)
+		{
+			subjectEdge = &e1;
+			clipEdge = &e2;
+		}
+		else if (e2IsSubject && !e1IsSubject)
+		{
+			subjectEdge = &e2;
+			clipEdge = &e1;
+		}
+		else if (e1IsSubject && e2IsSubject)
+		{
+			// Both are subject - use e1
+			subjectEdge = &e1;
+		}
+		else
+		{
+			// Both are clip - shouldn't happen in normal intersection, but handle it
+			subjectEdge = &e1;
+		}
+
+		// If ip doesn't have valid metadata (p_i == -1), get it from subject edge
+		if (ip.p_i == -1 && subjectEdge != nullptr)
+		{
+			// Try to match exact vertices first
+			if (ip == subjectEdge->bot)
+			{
+				ip.z = subjectEdge->bot.z;
+				ip.w = subjectEdge->bot.w;
+				ip.o = subjectEdge->bot.o;
+				ip.p_i = subjectEdge->bot.p_i;
+			}
+			else if (ip == subjectEdge->top)
+			{
+				ip.z = subjectEdge->top.z;
+				ip.w = subjectEdge->top.w;
+				ip.o = subjectEdge->top.o;
+				ip.p_i = subjectEdge->top.p_i;
+			}
+			else
+			{
+				// Intersection point doesn't match exactly - use subject edge's top metadata
+				if (subjectEdge->top.p_i != -1)
+				{
+					ip.z = subjectEdge->top.z;
+					ip.w = subjectEdge->top.w;
+					ip.o = subjectEdge->top.o;
+					ip.p_i = subjectEdge->top.p_i;
+				}
+				else if (subjectEdge->bot.p_i != -1)
+				{
+					ip.z = subjectEdge->bot.z;
+					ip.w = subjectEdge->bot.w;
+					ip.o = subjectEdge->bot.o;
+					ip.p_i = subjectEdge->bot.p_i;
+				}
+			}
+		}
+
+		// Handle z-coordinate for exact vertex matches
+		if (e1IsSubject)
 		{
 			if (ip == e1.bot) ip.z = e1.bot.z;
-			else if (ip == e1.top)
-				ip.z = e1.top.z;
-			else if (ip == e2.bot)
-				ip.z = e2.bot.z;
-			else if (ip == e2.top)
-				ip.z = e2.top.z;
-			//         ip.w = e1.top.w;
-			//         ip.o = e1.top.o;
-					 //ip.p_i = e1.top.p_i;
+			else if (ip == e1.top) ip.z = e1.top.z;
+			else if (e2IsSubject)
+			{
+				if (ip == e2.bot) ip.z = e2.bot.z;
+				else if (ip == e2.top) ip.z = e2.top.z;
+			}
+
 			zCallback_(e1.bot, e1.top, e2.bot, e2.top, ip);
 		}
 		else
 		{
-			if (ip == e2.bot)
-				ip.z = e2.bot.z;
-			else if (ip == e2.top)
-				ip.z = e2.top.z;
-			else if (ip == e1.bot)
-				ip.z = e1.bot.z;
-			else if (ip == e1.top)
-				ip.z = e1.top.z;
-			//         ip.w = e1.top.w;
-			//         ip.o = e1.top.o;
-					 //ip.p_i = e1.top.p_i;
+			if (ip == e2.bot) ip.z = e2.bot.z;
+			else if (ip == e2.top) ip.z = e2.top.z;
+			else if (e1IsSubject)
+			{
+				if (ip == e1.bot) ip.z = e1.bot.z;
+				else if (ip == e1.top) ip.z = e1.top.z;
+			}
+
 			zCallback_(e2.bot, e2.top, e1.bot, e1.top, ip);
 		}
 	}
