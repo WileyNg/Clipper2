@@ -203,9 +203,9 @@ namespace Clipper2Lib {
 		{
 			double abs_delta = std::abs(group_delta_);
 #ifdef USINGZ
-			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending? 0: side, static_cast<int>(j)
+			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y, path[j].z, ending? 0: side, static_cast<int>(j), path[j].p_i
 			);
-			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending ? 0 : side, static_cast<int>(j)
+			pt2 = PointD(path[j].x + abs_delta * norms[j].x, path[j].y + abs_delta * norms[j].y, path[j].z, ending ? 0 : side, static_cast<int>(j), path[j].p_i
 			);
 #else
 			pt1 = PointD(path[j].x - abs_delta * norms[j].x, path[j].y - abs_delta * norms[j].y);
@@ -215,9 +215,9 @@ namespace Clipper2Lib {
 		else
 		{
 #ifdef USINGZ
-			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending ? 0 : side, static_cast<int>(j)
+			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y, path[j].z, ending ? 0 : side, static_cast<int>(j), path[j].p_i
 			);
-			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending ? 0 : side, static_cast<int>(j)
+			pt2 = PointD(path[j].x + group_delta_ * norms[j].x, path[j].y + group_delta_ * norms[j].y, path[j].z, ending ? 0 : side, static_cast<int>(j), path[j].p_i
 			);
 #else
 			pt1 = PointD(path[j].x + group_delta_ * norms[k].x, path[j].y + group_delta_ * norms[k].y);
@@ -279,7 +279,7 @@ namespace Clipper2Lib {
 			path[j].y + (norms[k].y + norms[j].y) * q,
 			path[j].z,
 			ending ? 0 : side,
-			static_cast<int>(j) 
+			static_cast<int>(j), path[j].p_i
 		);
 		
 #else
@@ -344,7 +344,7 @@ namespace Clipper2Lib {
 #ifdef USINGZ
 			path_out.emplace_back(pt.x + offsetVec.x,
 				pt.y + offsetVec.y,
-				pt.z, ending_flag ? 0 : side, static_cast<int>(j)
+				pt.z, ending_flag ? 0 : side, static_cast<int>(j), pt.p_i
 			);
 #else
 			path_out.emplace_back(pt.x + offsetVec.x,
@@ -381,7 +381,7 @@ namespace Clipper2Lib {
 				pt.y + offsetVec.y,
 				pt.z,
 				ending_flag ? 0 : side,
-				static_cast<int>(j));
+				static_cast<int>(j), pt.p_i);
 #else
 			path_out.emplace_back(pt.x + offsetVec.x,
 				pt.y + offsetVec.y);
@@ -392,7 +392,7 @@ namespace Clipper2Lib {
 		// 6) Final perpendicular (snaps to final delta)
 		// ---------------------------------------------------
 		path_out.emplace_back(
-			GetPerpendic(path[j], norms[j], end_delta), pt.z, ending_flag ? 0 : side, static_cast<int>(j)
+			GetPerpendic(path[j], norms[j], end_delta), pt.z, ending_flag ? 0 : side, static_cast<int>(j), pt.p_i
 		);
 	}
 

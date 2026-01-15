@@ -1,2 +1,5 @@
-﻿  Wrapper.cpp
+﻿  clipper.offset.cpp
+C:\Users\Wileyng\source\repos\Clipper2\CPP\Clipper2Lib\src\clipper.offset.cpp(413,12): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+  Wrapper.cpp
+  Generating Code...
   Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.dll

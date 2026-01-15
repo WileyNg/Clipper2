@@ -16,11 +16,12 @@ namespace Clipper2Lib {
 		double y;
 		double z;
 
-		Point3d() : x(0), y(0), z(0) {} 
+		Point3d() : x(0), y(0), z(0) {}
 		Point3d(double x_, double y_, double z_)
 			: x(x_), y(y_), z(z_) {
 		}
-	};	
+	};
+
 	Path64 ConvertToPath64(const Point3d* points, int count) {
 		Path64 path;
 		path.reserve(count);
@@ -44,11 +45,29 @@ namespace Clipper2Lib {
 			int64_t y = static_cast<int64_t>(points[i].y * scale);
 			int64_t z = static_cast<int64_t>(points[i].z * scale);
 
-			int w = (wList != nullptr) ? wList[i] : 0;
+			int w = (wList != nullptr) ? wList[i] : -1;
 			int o = (oList != nullptr) ? oList[i] : 0;
 
 			Point64 pt;
 			pt.Init(x, y, z, w, o, pathIndex);
+			path.push_back(pt);
+		}
+		return path;
+	}
+	Path64 ConvertToPath64WithData(const Point3d* points, int count, const int* pathIndex, const int* oList) {
+		Path64 path;
+		path.reserve(count);
+		for (int i = 0; i < count; i++) {
+			const double scale = 1e6;
+			int64_t x = static_cast<int64_t>(points[i].x * scale);
+			int64_t y = static_cast<int64_t>(points[i].y * scale);
+			int64_t z = static_cast<int64_t>(points[i].z * scale);
+
+			int w =  -1;
+			int o = (oList != nullptr) ? oList[i] : 0;
+			int p_i = (pathIndex != nullptr) ? pathIndex[i] : -1;
+			Point64 pt;
+			pt.Init(x, y, z, w, o, p_i);
 			path.push_back(pt);
 		}
 		return path;
@@ -126,61 +145,104 @@ namespace Clipper2Lib {
 			*outputPoints0 = nullptr;
 		}
 	}
+
 	PINVOKE void InflateVariable(
 		const Point3d* inputPoints,
 		int inputCount,
 		double* deltas,
+		const int* pathIndices,
 		Point3d** outputPoints0,
 		int& outputCount0,
-		int** offsetOriginalIndices, 
+		int** outputOffsetOriginalIndices,
+		int** outputPathIndices,
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
 		EndType endType = EndType::Butt
 	)
 	{
-		Path64 outPath;
-		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
-
-
+		Path64 inputPath = ConvertToPath64WithData(inputPoints, inputCount, pathIndices, nullptr);
 		float miter_limit = 1.0;
 		ClipperOffset co(miter_limit, arc_tolerance);
-
 		Paths64 subject;
 		subject.push_back(inputPath);
-
 		co.AddPaths(subject, joinType, endType);
-
 		co.SetDeltaCallback([deltas](const Path64& path,
 			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
 			{
 				return  deltas[curr_idx] * 1e6;
 			});
 
-		//  solution
 		Paths64 solution;
 		co.Execute(1e6, solution);
-		// Convert the first output path to Point3d array
+
 		if (!solution.empty()) {
 			solution[0].push_back(solution[0].front());
 			outputCount0 = static_cast<int>(solution[0].size());
 			*outputPoints0 = new Point3d[outputCount0];
 			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
 
-			std::vector<int> offsetOriginalIndicesVec;
-			*offsetOriginalIndices = new int[outputCount0];
+			*outputOffsetOriginalIndices = new int[outputCount0];
+			*outputPathIndices = new int[outputCount0];
 			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
-				offsetOriginalIndicesVec.push_back(solution[0][i].o);
+				(*outputOffsetOriginalIndices)[i] = solution[0][i].o;
+				(*outputPathIndices)[i] = solution[0][i].p_i;
 			}
-
-			// Allocate and copy to output pointer
-			std::copy(offsetOriginalIndicesVec.begin(),
-				offsetOriginalIndicesVec.end(),
-				*offsetOriginalIndices);
-
 		}
 		else {
 			outputCount0 = 0;
 			*outputPoints0 = nullptr;
+			*outputOffsetOriginalIndices = nullptr;
+			*outputPathIndices = nullptr;
+		}
+	}
+	PINVOKE void InflateVariableWithoutUnion(
+		const Point3d* inputPoints,
+		int inputCount,
+		double* deltas,
+		const int* offsetOriginalIndices,
+		const int* pathIndices,
+		Point3d** outputPoints0,
+		int& outputCount0,
+		int** outputOffsetOriginalIndices,
+		int** outputPathIndices,
+		double arc_tolerance,
+		JoinType joinType = JoinType::Round,
+		EndType endType = EndType::Butt
+	)
+	{
+		Path64 inputPath = ConvertToPath64WithData(inputPoints, inputCount, pathIndices, offsetOriginalIndices);
+		float miter_limit = 1.0;
+		ClipperOffset co(miter_limit, arc_tolerance);
+		Paths64 subject;
+		subject.push_back(inputPath);
+		co.AddPaths(subject, joinType, endType);
+		co.SetDeltaCallback([deltas](const Path64& path,
+			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
+			{
+				return  deltas[curr_idx] * 1e6;
+			});
+
+		Paths64 solution;
+		co.ExecuteWithoutUnion(1e6, solution);
+
+		if (!solution.empty()) {
+			solution[0].push_back(solution[0].front());
+			outputCount0 = static_cast<int>(solution[0].size());
+			*outputPoints0 = new Point3d[outputCount0];
+			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
+
+			*outputOffsetOriginalIndices = new int[outputCount0];
+			*outputPathIndices = new int[outputCount0];
+			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
+				(*outputOffsetOriginalIndices)[i] = solution[0][i].o;
+				(*outputPathIndices)[i] = solution[0][i].p_i;
+			}
+		}
+		else {
+			outputCount0 = 0;
+			*outputPoints0 = nullptr;
+			*outputOffsetOriginalIndices = nullptr;
+			*outputPathIndices = nullptr;
 		}
 	}
 	struct DeltaSelector
@@ -239,7 +301,7 @@ namespace Clipper2Lib {
 
 		co.AddPaths(subject, joinType, endType);
 		DeltaSelector selector{
- 			&co.is_another_side,
+			&co.is_another_side,
 			&co.ending_flag,
 			leftSideDeltas,
 			rightSideDeltas
@@ -248,10 +310,8 @@ namespace Clipper2Lib {
 		co.SetDeltaCallback(selector);
 		// solution
 		Paths64 solution;
-		
-		co.Execute(1e6, solution);
-		SimplifyPaths(solution, 1 * 1e6);
 
+		co.Execute(1e6, solution);
 		// Convert the first output path to Point3d array
 		if (!solution.empty()) {
 			solution[0].push_back(solution[0].front());
@@ -552,7 +612,7 @@ namespace Clipper2Lib {
 		Point3d** outputPoints0,
 		int& outputCount0,
 		int** wIndices,
-		int** offsetOriginalIndices, 
+		int** offsetOriginalIndices,
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
 		EndType endType = EndType::Butt
