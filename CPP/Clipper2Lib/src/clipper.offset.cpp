@@ -272,6 +272,14 @@ namespace Clipper2Lib {
 	{
 		bool ending = j == k;
 		int side = is_another_side ? 2 : 1; // 1=left side, 2=right side
+
+		Point64  node = path[j];
+		node.w = side;
+		if (node.o == -1)  // not to replace the original o value
+			node.o = static_cast<int>(j);
+		node.p_i = path[j].p_i;
+
+
 		double q = group_delta_ / (cos_a + 1);
 #ifdef USINGZ
 		path_out.emplace_back(
@@ -279,7 +287,7 @@ namespace Clipper2Lib {
 			path[j].y + (norms[k].y + norms[j].y) * q,
 			path[j].z,
 			ending ? 0 : side,
-			static_cast<int>(j), path[j].p_i
+			node.o, node.p_i
 		);
 		
 #else
@@ -297,6 +305,12 @@ namespace Clipper2Lib {
 		ending_flag = j == k;
 		int side = is_another_side ? 2 : 1; // 1=left side, 2=right side
 
+		Point64  node = path[j];
+		node.w = side;
+		if (node.o == -1)  // not to replace the original o value
+			node.o = static_cast<int>(j);
+		node.p_i = path[j].p_i;
+
 		// --- existing dynamic delta handling (unchanged) ---
 		if (deltaCallback64_) {
 			double abs_delta = std::fabs(group_delta_);
@@ -311,8 +325,6 @@ namespace Clipper2Lib {
 			if (group_delta_ < 0.0) step_sin_ = -step_sin_;
 			steps_per_rad_ = steps_per_360 / (2 * PI);
 		}
-
-		Point64 pt = path[j];
 
 		// ---------------------------------------------------
 		// 1) Determine delta range
@@ -342,9 +354,9 @@ namespace Clipper2Lib {
 			double curr_delta = start_delta;
 			PointD offsetVec(dir.x * curr_delta, dir.y * curr_delta);
 #ifdef USINGZ
-			path_out.emplace_back(pt.x + offsetVec.x,
-				pt.y + offsetVec.y,
-				pt.z, ending_flag ? 0 : side, static_cast<int>(j), pt.p_i
+			path_out.emplace_back(node.x + offsetVec.x,
+				node.y + offsetVec.y,
+				node.z, ending_flag ? 0 : node.w, node.o, node.p_i
 			);
 #else
 			path_out.emplace_back(pt.x + offsetVec.x,
@@ -377,11 +389,11 @@ namespace Clipper2Lib {
 			PointD offsetVec(dir.x * curr_delta, dir.y * curr_delta);
 #ifdef USINGZ
 			path_out.emplace_back(
-				pt.x + offsetVec.x,
-				pt.y + offsetVec.y,
-				pt.z,
+				node.x + offsetVec.x,
+				node.y + offsetVec.y,
+				node.z,
 				ending_flag ? 0 : side,
-				static_cast<int>(j), pt.p_i);
+				node.o, node.p_i);
 #else
 			path_out.emplace_back(pt.x + offsetVec.x,
 				pt.y + offsetVec.y);
@@ -392,7 +404,7 @@ namespace Clipper2Lib {
 		// 6) Final perpendicular (snaps to final delta)
 		// ---------------------------------------------------
 		path_out.emplace_back(
-			GetPerpendic(path[j], norms[j], end_delta), pt.z, ending_flag ? 0 : side, static_cast<int>(j), pt.p_i
+			GetPerpendic(node, norms[j], end_delta), node.z, ending_flag ? 0 : side, node.o, node.p_i
 		);
 	}
 
@@ -410,7 +422,8 @@ namespace Clipper2Lib {
 
 		Point64  node = path[j];
 		node.w = side;
-		node.o = j;
+		if (node.o == -1)  // not to replace the original o value
+			node.o = static_cast<int>(j);
 		node.p_i = path[j].p_i;
 		double sin_a = CrossProduct(norms[j], norms[k]);
 		double cos_a = DotProduct(norms[j], norms[k]);

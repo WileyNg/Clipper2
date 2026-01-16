@@ -199,10 +199,11 @@ namespace Clipper2Lib {
 		const Point3d* inputPoints,
 		int inputCount,
 		double* deltas,
-		const int* offsetOriginalIndices,
 		const int* pathIndices,
+		const int* originalIndices,      // NEW: input original indices
 		Point3d** outputPoints0,
 		int& outputCount0,
+		int** wIndices,                  // NEW: output w indices
 		int** outputOffsetOriginalIndices,
 		int** outputPathIndices,
 		double arc_tolerance,
@@ -210,37 +211,49 @@ namespace Clipper2Lib {
 		EndType endType = EndType::Butt
 	)
 	{
-		Path64 inputPath = ConvertToPath64WithData(inputPoints, inputCount, pathIndices, offsetOriginalIndices);
+		Path64 inputPath = ConvertToPath64WithData(inputPoints, inputCount, pathIndices, originalIndices);
+
 		float miter_limit = 1.0;
 		ClipperOffset co(miter_limit, arc_tolerance);
 		Paths64 subject;
 		subject.push_back(inputPath);
 		co.AddPaths(subject, joinType, endType);
+
 		co.SetDeltaCallback([deltas](const Path64& path,
 			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
 			{
-				return  deltas[curr_idx] * 1e6;
+				return deltas[curr_idx] * 1e6;
 			});
 
 		Paths64 solution;
 		co.ExecuteWithoutUnion(1e6, solution);
 
-		if (!solution.empty()) {
+		if (!solution.empty())
+		{
 			solution[0].push_back(solution[0].front());
 			outputCount0 = static_cast<int>(solution[0].size());
-			*outputPoints0 = new Point3d[outputCount0];
+
+			// Allocate outputs using CoTaskMemAlloc
+			*outputPoints0 = (Point3d*)CoTaskMemAlloc(sizeof(Point3d) * outputCount0);
+			*wIndices = (int*)CoTaskMemAlloc(sizeof(int) * outputCount0);
+			*outputOffsetOriginalIndices = (int*)CoTaskMemAlloc(sizeof(int) * outputCount0);
+			*outputPathIndices = (int*)CoTaskMemAlloc(sizeof(int) * outputCount0);
+
+			// Convert points and extract metadata
 			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
 
-			*outputOffsetOriginalIndices = new int[outputCount0];
-			*outputPathIndices = new int[outputCount0];
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
+			for (int i = 0; i < outputCount0; ++i)
+			{
+				(*wIndices)[i] = solution[0][i].w;
 				(*outputOffsetOriginalIndices)[i] = solution[0][i].o;
 				(*outputPathIndices)[i] = solution[0][i].p_i;
 			}
 		}
-		else {
+		else
+		{
 			outputCount0 = 0;
 			*outputPoints0 = nullptr;
+			*wIndices = nullptr;
 			*outputOffsetOriginalIndices = nullptr;
 			*outputPathIndices = nullptr;
 		}
@@ -402,7 +415,7 @@ namespace Clipper2Lib {
 		const Point3d** inputPolylines,
 		const int* inputCounts,
 		int polylineCount,
-		int** inputWList,
+		int** inputPathList,
 		int** inputOList,
 		Point3d*** outputPolylines,
 		int** outputCounts,
@@ -417,12 +430,17 @@ namespace Clipper2Lib {
 		// Convert all input polylines to Path64
 		Paths64 subjects;
 		subjects.reserve(polylineCount);
+
 		for (int i = 0; i < polylineCount; ++i)
 		{
-			const int* wList = (inputWList != nullptr) ? inputWList[i] : nullptr;
+			const Point3d* points = inputPolylines[i];
+			int count = inputCounts[i];
+
+			const int* pIndex = (inputPathList != nullptr) ? inputPathList[i] : nullptr;
 			const int* oList = (inputOList != nullptr) ? inputOList[i] : nullptr;
-			Path64 path = ConvertToPath64WithPathIndex(inputPolylines[i], inputCounts[i], i, wList, oList);
-			subjects.push_back(path);
+
+			Path64 path = ConvertToPath64WithData(points, count, pIndex, oList);
+			subjects.push_back(std::move(path));
 		}
 
 		// Perform union operation
@@ -484,7 +502,7 @@ namespace Clipper2Lib {
 		const Point3d** subjectPolylines,
 		const int* subjectCounts,
 		int subjectPolylineCount,
-		int** subjectWList,              // NEW: Array of w indices for each subject polyline
+		int** subjectPathList,              // NEW: Array of w indices for each subject polyline
 		int** subjectOList,              // NEW: Array of o indices for each subject polyline
 		const Point3d** clipPolylines,
 		const int* clipCounts,
@@ -498,20 +516,26 @@ namespace Clipper2Lib {
 		int*** offsetOriginalIndices,    // Array of o indices for each output polyline
 		int*** pathIndices,              // Array of p_i (path index) for each output polyline
 		bool preserveCollinear = false,
-		FillRule fillRule = FillRule::Positive
+		FillRule fillRule = FillRule::NonZero
 	)
 	{
 		// Convert subject polylines to Path64
 	// Convert subject polylines to Path64
 		Paths64 subjects;
 		subjects.reserve(subjectPolylineCount);
+
 		for (int i = 0; i < subjectPolylineCount; ++i)
 		{
-			const int* wList = (subjectWList != nullptr) ? subjectWList[i] : nullptr;
+			const Point3d* points = subjectPolylines[i];
+			int count = subjectCounts[i];
+
+			const int* pIndex = (subjectPathList != nullptr) ? subjectPathList[i] : nullptr;
 			const int* oList = (subjectOList != nullptr) ? subjectOList[i] : nullptr;
-			Path64 path = ConvertToPath64WithPathIndex(subjectPolylines[i], subjectCounts[i], i, wList, oList);
-			subjects.push_back(path);
+
+			Path64 path = ConvertToPath64WithData(points, count, pIndex, oList);
+			subjects.push_back(std::move(path));
 		}
+
 
 		// Convert clip polylines to Path64
 		Paths64 clips;
@@ -604,7 +628,7 @@ namespace Clipper2Lib {
 		}
 	}
 
-	PINVOKE void InflateVariableBothSideWithoutUnion(
+	PINVOKE void InflateVariableBothSideWithoutUnion(  //To Do I need to create another method where it takes in o value. if it is taken in, then we should stop offset from creating a new o value
 		const Point3d* inputPoints,
 		int inputCount,
 		double* leftSideDeltas,
@@ -620,6 +644,7 @@ namespace Clipper2Lib {
 	{
 		Path64 outPath;
 		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
+
 		Paths64 subject;
 
 

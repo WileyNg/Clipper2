@@ -124,7 +124,7 @@ namespace Clipper2Lib
       int o; // original index from input
 	  int p_i; //original path index from input
         template <typename T2>
-      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = -1)
+      inline void Init(const T2 x_ = 0, const T2 y_ = 0, const z_type z_ = 0, const int w_ = -1, const int o_ = -1, const int p_i_ = -1)
         {
             if constexpr (std::is_integral_v<T> &&
                 is_round_invocable<T2>::value && !std::is_integral_v<T2>)
@@ -151,7 +151,7 @@ namespace Clipper2Lib
       explicit Point() : x(0), y(0), z(0), w(0), o(0), p_i(-1) {};
 
         template <typename T2>
-      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = 0, const int o_ = 0, const int p_i_ = -1)
+      Point(const T2 x_, const T2 y_, const z_type z_ = 0, const int w_ = 0, const int o_ = -1, const int p_i_ = -1)
         {
           Init(x_, y_, z_, w_, o_, p_i_);
         }
