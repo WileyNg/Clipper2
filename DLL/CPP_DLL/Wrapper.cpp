@@ -11,24 +11,73 @@ namespace Clipper2Lib {
 	const double default_arc_tolerance = 50;
 	const double M_PI = 3.14159265358979323846;
 
+	// Simple Point3d for geometry only
 	struct Point3d {
 		double x;
 		double y;
 		double z;
 
 		Point3d() : x(0), y(0), z(0) {}
-		Point3d(double x_, double y_, double z_)
-			: x(x_), y(y_), z(z_) {
+		Point3d(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+	};
+
+	// NEW: BoundaryPoint bundles geometry + metadata
+	struct BoundaryPoint {
+		Point3d point;
+		int side;          // w - Position enum as int (0=Ending, 1=Left, 2=Right)
+		int originalIndex; // o - index in original polyline
+		int pathIndex;     // p_i - which path this came from
+
+		BoundaryPoint() : point(), side(-1), originalIndex(-1), pathIndex(-1) {}
+		BoundaryPoint(Point3d p, int s = -1, int o = -1, int pi = -1)
+			: point(p), side(s), originalIndex(o), pathIndex(pi) {
 		}
 	};
 
+	// ============================================================================
+	// CONVERSION HELPERS
+	// ============================================================================
+
+	Path64 BoundaryPointsToPath64(const BoundaryPoint* points, int count) {
+		Path64 path;
+		path.reserve(count);
+		const double scale = 1e6;
+
+		for (int i = 0; i < count; i++) {
+			Point64 pt;
+			pt.Init(
+				points[i].point.x * scale,
+				points[i].point.y * scale,
+				points[i].point.z * scale,
+				points[i].side,
+				points[i].originalIndex,
+				points[i].pathIndex
+			);
+			path.push_back(pt);
+		}
+		return path;
+	}
+
+	void Path64ToBoundaryPoints(const Path64& path, BoundaryPoint* points, int& count) {
+		const double scale = 1e-6;
+		count = 0;
+		for (const Point64& p : path) {
+			points[count].point.x = p.x * scale;
+			points[count].point.y = p.y * scale;
+			points[count].point.z = p.z * scale;
+			points[count].side = p.w;
+			points[count].originalIndex = p.o;
+			points[count].pathIndex = p.p_i;
+			count++;
+		}
+	}
+
+	// Legacy conversions (kept for backward compatibility)
 	Path64 ConvertToPath64(const Point3d* points, int count) {
 		Path64 path;
 		path.reserve(count);
+		const double scale = 1e6;
 		for (int i = 0; i < count; i++) {
-			// Clipper2 uses integer coordinates, so we scale the doubles
-			// Using 1e6 as scale factor for 6 decimal places of precision
-			const double scale = 1e6;
 			int64_t x = static_cast<int64_t>(points[i].x * scale);
 			int64_t y = static_cast<int64_t>(points[i].y * scale);
 			int64_t z = static_cast<int64_t>(points[i].z * scale);
@@ -36,34 +85,17 @@ namespace Clipper2Lib {
 		}
 		return path;
 	}
-	Path64 ConvertToPath64WithPathIndex(const Point3d* points, int count, int pathIndex, const int* wList, const int* oList) {
-		Path64 path;
-		path.reserve(count);
-		for (int i = 0; i < count; i++) {
-			const double scale = 1e6;
-			int64_t x = static_cast<int64_t>(points[i].x * scale);
-			int64_t y = static_cast<int64_t>(points[i].y * scale);
-			int64_t z = static_cast<int64_t>(points[i].z * scale);
 
-			int w = (wList != nullptr) ? wList[i] : -1;
-			int o = (oList != nullptr) ? oList[i] : 0;
-
-			Point64 pt;
-			pt.Init(x, y, z, w, o, pathIndex);
-			path.push_back(pt);
-		}
-		return path;
-	}
 	Path64 ConvertToPath64WithData(const Point3d* points, int count, const int* pathIndex, const int* oList) {
 		Path64 path;
 		path.reserve(count);
+		const double scale = 1e6;
 		for (int i = 0; i < count; i++) {
-			const double scale = 1e6;
 			int64_t x = static_cast<int64_t>(points[i].x * scale);
 			int64_t y = static_cast<int64_t>(points[i].y * scale);
 			int64_t z = static_cast<int64_t>(points[i].z * scale);
 
-			int w =  -1;
+			int w = -1;
 			int o = (oList != nullptr) ? oList[i] : 0;
 			int p_i = (pathIndex != nullptr) ? pathIndex[i] : -1;
 			Point64 pt;
@@ -72,13 +104,9 @@ namespace Clipper2Lib {
 		}
 		return path;
 	}
-	static inline Point64 GetPerpendic(const Point64& pt, const PointD& norm, double delta)
-	{
-		return Point64(pt.x + norm.x * delta, pt.y + norm.y * delta, pt.z, pt.w, pt.o);
-	}
 
 	void ConvertFromPath64(const Path64& path, Point3d* points, int& count) {
-		const double scale = 1e-6; // Reverse the scaling
+		const double scale = 1e-6;
 		count = 0;
 		for (const Point64& p : path) {
 			points[count].x = p.x * scale;
@@ -88,57 +116,124 @@ namespace Clipper2Lib {
 		}
 	}
 
+	// ============================================================================
+	// MEMORY MANAGEMENT
+	// ============================================================================
+
+	PINVOKE void FreeBoundaryPoints(BoundaryPoint* ptr) {
+		CoTaskMemFree(ptr);
+	}
+
+	PINVOKE void FreeBoundaryPointsArray(BoundaryPoint** ptr, int count) {
+		if (ptr) {
+			for (int i = 0; i < count; i++) {
+				if (ptr[i]) CoTaskMemFree(ptr[i]);
+			}
+			CoTaskMemFree(ptr);
+		}
+	}
+
 	PINVOKE void DeletePoints(Point3d* points) {
 		delete[] points;
 	}
 
+	PINVOKE void FreeMemory(Point3d* ptr) {
+		delete[] ptr;
+	}
+
+	// ============================================================================
+	// DELTA SELECTOR (for both-side operations)
+	// ============================================================================
+
+	struct DeltaSelector {
+		const bool* isAnotherSide;
+		const bool* isEnding;
+		double* left;
+		double* right;
+
+		double operator()(const Path64&, const PathD&, size_t curr_idx, size_t) const {
+			if (*isEnding) {
+				return (*isAnotherSide ? right[curr_idx] : left[curr_idx]) * 1e6;
+			}
+			else {
+				return (*isAnotherSide ? left[curr_idx] : right[curr_idx]) * 1e6;
+			}
+		}
+	};
+
+	static void UnionZCB(const Point64& bot1, const Point64& top1,
+		const Point64& bot2, const Point64& top2, Point64& ip)
+	{
+		if (bot1.z && ((bot1.z == bot2.z) || (bot1.z == top2.z)))
+			ip.z = bot1.z;
+		else if (bot2.z && (bot2.z == top1.z))
+			ip.z = bot2.z;
+		else if (top1.z && (top1.z == top2.z))
+			ip.z = top1.z;
+		else
+			ip.z = top1.z;
+
+		if (ip.p_i == -1 || ip.o == -1 || ip.w == -1) {
+			if (top1.p_i != -1) {
+				ip.w = top1.w;
+				ip.o = top1.o;
+				ip.p_i = top1.p_i;
+			}
+			else if (bot1.p_i != -1) {
+				ip.w = bot1.w;
+				ip.o = bot1.o;
+				ip.p_i = bot1.p_i;
+			}
+			else if (top2.p_i != -1) {
+				ip.w = top2.w;
+				ip.o = top2.o;
+				ip.p_i = top2.p_i;
+			}
+			else if (bot2.p_i != -1) {
+				ip.w = bot2.w;
+				ip.o = bot2.o;
+				ip.p_i = bot2.p_i;
+			}
+		}
+	}
+
+	// ============================================================================
+	// LEGACY FUNCTIONS (keep for backward compatibility if needed)
+	// ============================================================================
 
 	PINVOKE void Inflate(
 		const Point3d* inputPoints,
 		int inputCount,
-		double  delta,
+		double delta,
 		Point3d** outputPoints0,
 		int& outputCount0,
 		int** offsetOriginalIndices,
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt
-	)
+		EndType endType = EndType::Butt)
 	{
-		Path64 outPath;
 		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
-
 		float miter_limit = 1.0;
 
-
 		Paths64 solution = Clipper2Lib::InflatePaths(
-			Paths64{ inputPath }, // expects Paths64
-			delta * 1e6,        // scale delta as in other usages
+			Paths64{ inputPath },
+			delta * 1e6,
 			joinType,
 			endType,
 			miter_limit,
-			arc_tolerance// assuming this is miter limit or arc tolerance
+			arc_tolerance
 		);
 
-		// Convert the first output path to Point3d array
 		if (!solution.empty()) {
 			solution[0].push_back(solution[0].front());
 			outputCount0 = static_cast<int>(solution[0].size());
 			*outputPoints0 = new Point3d[outputCount0];
 			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
 
-			std::vector<int> offsetOriginalIndicesVec;
 			*offsetOriginalIndices = new int[outputCount0];
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
-				offsetOriginalIndicesVec.push_back(solution[0][i].o);
+			for (int i = 0; i < outputCount0; ++i) {
+				(*offsetOriginalIndices)[i] = solution[0][i].o;
 			}
-
-			// Allocate and copy to output pointer
-			std::copy(offsetOriginalIndicesVec.begin(),
-				offsetOriginalIndicesVec.end(),
-				*offsetOriginalIndices);
-
-
 		}
 		else {
 			outputCount0 = 0;
@@ -157,8 +252,7 @@ namespace Clipper2Lib {
 		int** outputPathIndices,
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt
-	)
+		EndType endType = EndType::Butt)
 	{
 		Path64 inputPath = ConvertToPath64WithData(inputPoints, inputCount, pathIndices, nullptr);
 		float miter_limit = 1.0;
@@ -166,10 +260,9 @@ namespace Clipper2Lib {
 		Paths64 subject;
 		subject.push_back(inputPath);
 		co.AddPaths(subject, joinType, endType);
-		co.SetDeltaCallback([deltas](const Path64& path,
-			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
-			{
-				return  deltas[curr_idx] * 1e6;
+		co.SetDeltaCallback([deltas](const Path64& path, const PathD& path_norms,
+			size_t curr_idx, size_t prev_idx) {
+				return deltas[curr_idx] * 1e6;
 			});
 
 		Paths64 solution;
@@ -183,7 +276,7 @@ namespace Clipper2Lib {
 
 			*outputOffsetOriginalIndices = new int[outputCount0];
 			*outputPathIndices = new int[outputCount0];
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
+			for (int i = 0; i < outputCount0; ++i) {
 				(*outputOffsetOriginalIndices)[i] = solution[0][i].o;
 				(*outputPathIndices)[i] = solution[0][i].p_i;
 			}
@@ -195,23 +288,22 @@ namespace Clipper2Lib {
 			*outputPathIndices = nullptr;
 		}
 	}
+
+	// ============================================================================
+	// REFACTORED FUNCTIONS - Using BoundaryPoint (keep same names!)
+	// ============================================================================
+
 	PINVOKE void InflateVariableWithoutUnion(
-		const Point3d* inputPoints,
+		const BoundaryPoint* inputPoints,
 		int inputCount,
 		double* deltas,
-		const int* pathIndices,
-		const int* originalIndices,      // NEW: input original indices
-		Point3d** outputPoints0,
-		int& outputCount0,
-		int** wIndices,                  // NEW: output w indices
-		int** outputOffsetOriginalIndices,
-		int** outputPathIndices,
+		BoundaryPoint** outputPoints,
+		int& outputCount,
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt
-	)
+		EndType endType = EndType::Butt)
 	{
-		Path64 inputPath = ConvertToPath64WithData(inputPoints, inputCount, pathIndices, originalIndices);
+		Path64 inputPath = BoundaryPointsToPath64(inputPoints, inputCount);
 
 		float miter_limit = 1.0;
 		ClipperOffset co(miter_limit, arc_tolerance);
@@ -219,231 +311,134 @@ namespace Clipper2Lib {
 		subject.push_back(inputPath);
 		co.AddPaths(subject, joinType, endType);
 
-		co.SetDeltaCallback([deltas](const Path64& path,
-			const PathD& path_norms, size_t curr_idx, size_t prev_idx)
-			{
+		co.SetDeltaCallback([deltas](const Path64& path, const PathD& path_norms,
+			size_t curr_idx, size_t prev_idx) {
 				return deltas[curr_idx] * 1e6;
 			});
 
 		Paths64 solution;
 		co.ExecuteWithoutUnion(1e6, solution);
 
-		if (!solution.empty())
-		{
+		if (!solution.empty()) {
 			solution[0].push_back(solution[0].front());
-			outputCount0 = static_cast<int>(solution[0].size());
+			outputCount = static_cast<int>(solution[0].size());
 
-			// Allocate outputs using CoTaskMemAlloc
-			*outputPoints0 = (Point3d*)CoTaskMemAlloc(sizeof(Point3d) * outputCount0);
-			*wIndices = (int*)CoTaskMemAlloc(sizeof(int) * outputCount0);
-			*outputOffsetOriginalIndices = (int*)CoTaskMemAlloc(sizeof(int) * outputCount0);
-			*outputPathIndices = (int*)CoTaskMemAlloc(sizeof(int) * outputCount0);
-
-			// Convert points and extract metadata
-			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
-
-			for (int i = 0; i < outputCount0; ++i)
-			{
-				(*wIndices)[i] = solution[0][i].w;
-				(*outputOffsetOriginalIndices)[i] = solution[0][i].o;
-				(*outputPathIndices)[i] = solution[0][i].p_i;
-			}
+			*outputPoints = (BoundaryPoint*)CoTaskMemAlloc(sizeof(BoundaryPoint) * outputCount);
+			Path64ToBoundaryPoints(solution[0], *outputPoints, outputCount);
 		}
-		else
-		{
-			outputCount0 = 0;
-			*outputPoints0 = nullptr;
-			*wIndices = nullptr;
-			*outputOffsetOriginalIndices = nullptr;
-			*outputPathIndices = nullptr;
+		else {
+			outputCount = 0;
+			*outputPoints = nullptr;
 		}
 	}
-	struct DeltaSelector
-	{
-		const bool* isAnotherSide;
-		const bool* isEnding;        // ?? NEW
-		double* left;
-		double* right;
-
-		double operator()(const Path64&,
-			const PathD&,
-			size_t curr_idx,
-			size_t) const
-		{
-			if (*isEnding)
-			{
-				// swapped behavior
-				return (*isAnotherSide ?
-					right[curr_idx] :
-					left[curr_idx]) * 1e6;
-			}
-			else
-			{
-				// default behavior
-				return (*isAnotherSide ?
-					left[curr_idx] :
-					right[curr_idx]) * 1e6;
-			}
-		}
-	};
 
 	PINVOKE void InflateVariableBothSide(
-		const Point3d* inputPoints,
+		const BoundaryPoint* inputPoints,
 		int inputCount,
 		double* leftSideDeltas,
 		double* rightSideDeltas,
-		Point3d** outputPoints0,
-		int& outputCount0,
-		int** wIndices,
-		int** offsetOriginalIndices,
+		BoundaryPoint** outputPoints,
+		int& outputCount,
 		double arc_tolerance,
 		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt
-	)
+		EndType endType = EndType::Butt)
 	{
-		Path64 outPath;
-		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
+		Path64 inputPath = BoundaryPointsToPath64(inputPoints, inputCount);
 		Paths64 subject;
-
-
-
 		subject.push_back(inputPath);
 
 		float miter_limit = 1.0;
 		ClipperOffset co(miter_limit, arc_tolerance);
-
 		co.AddPaths(subject, joinType, endType);
+
 		DeltaSelector selector{
 			&co.is_another_side,
 			&co.ending_flag,
 			leftSideDeltas,
 			rightSideDeltas
 		};
-
 		co.SetDeltaCallback(selector);
-		// solution
-		Paths64 solution;
 
+		Paths64 solution;
 		co.Execute(1e6, solution);
-		// Convert the first output path to Point3d array
+
 		if (!solution.empty()) {
 			solution[0].push_back(solution[0].front());
-			outputCount0 = static_cast<int>(solution[0].size());
-			*outputPoints0 = new Point3d[outputCount0];
-			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
+			outputCount = static_cast<int>(solution[0].size());
 
-			// Collect all  w values
-			std::vector<int> wTrueIndicesVec;
-			std::vector<int> offsetOriginalIndicesVec;
-			*wIndices = new int[outputCount0];
-			*offsetOriginalIndices = new int[outputCount0];
-
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i)
-			{
-				wTrueIndicesVec.push_back(solution[0][i].w);
-
-			}
-
-			// Allocate and copy indices
-			std::copy(wTrueIndicesVec.begin(), wTrueIndicesVec.end(), *wIndices);
-			// Collect all offset original indices
-
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
-				offsetOriginalIndicesVec.push_back(solution[0][i].o);
-			}
-
-			// Allocate and copy to output pointer
-			std::copy(offsetOriginalIndicesVec.begin(),
-				offsetOriginalIndicesVec.end(),
-				*offsetOriginalIndices);
-
+			*outputPoints = (BoundaryPoint*)CoTaskMemAlloc(sizeof(BoundaryPoint) * outputCount);
+			Path64ToBoundaryPoints(solution[0], *outputPoints, outputCount);
 		}
 		else {
-			outputCount0 = 0;
-			*outputPoints0 = nullptr;
-			*wIndices = nullptr;
-			*offsetOriginalIndices = nullptr;
+			outputCount = 0;
+			*outputPoints = nullptr;
 		}
 	}
-	// Standalone Z callback function for Union operation
-	static void UnionZCB(const Point64& bot1, const Point64& top1,
-		const Point64& bot2, const Point64& top2, Point64& ip)
-	{
-		// Follow the same logic as ClipperOffset::ZCB
-		if (bot1.z && ((bot1.z == bot2.z) || (bot1.z == top2.z)))
-			ip.z = bot1.z;
-		else if (bot2.z && (bot2.z == top1.z))
-			ip.z = bot2.z;
-		else if (top1.z && (top1.z == top2.z))
-			ip.z = top1.z;
-		// No external zCallback64_ in standalone version, so default to top1.z
-		else
-			ip.z = top1.z;
 
-		// FIXED: Only set w, o, p_i if ip doesn't already have valid metadata
-		if (ip.p_i == -1 || ip.o == -1 || ip.w == -1)
-		{
-			// ip needs metadata - choose from a valid source (prefer top1)
-			if (top1.p_i != -1)
-			{
-				ip.w = top1.w;
-				ip.o = top1.o;
-				ip.p_i = top1.p_i;
-			}
-			else if (bot1.p_i != -1)
-			{
-				ip.w = bot1.w;
-				ip.o = bot1.o;
-				ip.p_i = bot1.p_i;
-			}
-			else if (top2.p_i != -1)
-			{
-				ip.w = top2.w;
-				ip.o = top2.o;
-				ip.p_i = top2.p_i;
-			}
-			else if (bot2.p_i != -1)
-			{
-				ip.w = bot2.w;
-				ip.o = bot2.o;
-				ip.p_i = bot2.p_i;
-			}
+	PINVOKE void InflateVariableBothSideWithoutUnion(
+		const BoundaryPoint* inputPoints,
+		int inputCount,
+		double* leftSideDeltas,
+		double* rightSideDeltas,
+		BoundaryPoint** outputPoints,
+		int& outputCount,
+		double arc_tolerance,
+		JoinType joinType = JoinType::Round,
+		EndType endType = EndType::Butt)
+	{
+		Path64 inputPath = BoundaryPointsToPath64(inputPoints, inputCount);
+		Paths64 subject;
+		subject.push_back(inputPath);
+
+		float miter_limit = 1.0;
+		ClipperOffset co(miter_limit, arc_tolerance);
+		co.AddPaths(subject, joinType, endType);
+
+		DeltaSelector selector{
+			&co.is_another_side,
+			&co.ending_flag,
+			leftSideDeltas,
+			rightSideDeltas
+		};
+		co.SetDeltaCallback(selector);
+
+		Paths64 solution;
+		co.ExecuteWithoutUnion(1e6, solution);
+
+		if (!solution.empty()) {
+			solution[0].push_back(solution[0].front());
+			outputCount = static_cast<int>(solution[0].size());
+
+			*outputPoints = (BoundaryPoint*)CoTaskMemAlloc(sizeof(BoundaryPoint) * outputCount);
+			Path64ToBoundaryPoints(solution[0], *outputPoints, outputCount);
+		}
+		else {
+			outputCount = 0;
+			*outputPoints = nullptr;
 		}
 	}
 
 	PINVOKE void Union(
-		const Point3d** inputPolylines,
+		const BoundaryPoint** inputPolylines,
 		const int* inputCounts,
 		int polylineCount,
-		int** inputPathList,
-		int** inputOList,
-		Point3d*** outputPolylines,
+		BoundaryPoint*** outputPolylines,
 		int** outputCounts,
 		int& outputPolylineCount,
-		int*** wIndices,
-		int*** offsetOriginalIndices,
-		int*** pathIndices,
 		bool preserveCollinear = false,
-		FillRule fillRule = FillRule::Positive
-	)
+		FillRule fillRule = FillRule::NonZero)
 	{
-		// Convert all input polylines to Path64
 		Paths64 subjects;
 		subjects.reserve(polylineCount);
 
-		for (int i = 0; i < polylineCount; ++i)
-		{
-			const Point3d* points = inputPolylines[i];
-			int count = inputCounts[i];
-
-			const int* pIndex = (inputPathList != nullptr) ? inputPathList[i] : nullptr;
-			const int* oList = (inputOList != nullptr) ? inputOList[i] : nullptr;
-
-			Path64 path = ConvertToPath64WithData(points, count, pIndex, oList);
+		for (int i = 0; i < polylineCount; ++i) {
+			Path64 path = BoundaryPointsToPath64(inputPolylines[i], inputCounts[i]);
+			if (!Clipper2Lib::IsPositive(path)) {
+				std::reverse(path.begin(), path.end());
+			}
 			subjects.push_back(std::move(path));
 		}
 
-		// Perform union operation
 		Paths64 solution;
 		Clipper64 clipper;
 		clipper.PreserveCollinear(preserveCollinear);
@@ -453,115 +448,61 @@ namespace Clipper2Lib {
 		clipper.AddSubject(subjects);
 		clipper.Execute(ClipType::Union, fillRule, solution);
 
-		// Convert results back to Point3d arrays
-		if (!solution.empty())
-		{
+		if (!solution.empty()) {
 			outputPolylineCount = static_cast<int>(solution.size());
 
-			// Allocate outer arrays using CoTaskMemAlloc
-			*outputPolylines = (Point3d**)CoTaskMemAlloc(sizeof(Point3d*) * outputPolylineCount);
+			*outputPolylines = (BoundaryPoint**)CoTaskMemAlloc(sizeof(BoundaryPoint*) * outputPolylineCount);
 			*outputCounts = (int*)CoTaskMemAlloc(sizeof(int) * outputPolylineCount);
-			*wIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
-			*offsetOriginalIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
-			*pathIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
 
-			// Allocate and fill inner arrays
-			for (int i = 0; i < outputPolylineCount; ++i)
-			{
+			for (int i = 0; i < outputPolylineCount; ++i) {
 				int count = static_cast<int>(solution[i].size());
 				(*outputCounts)[i] = count;
 
-				// Allocate inner arrays using CoTaskMemAlloc
-				(*outputPolylines)[i] = (Point3d*)CoTaskMemAlloc(sizeof(Point3d) * count);
-				(*wIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
-				(*offsetOriginalIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
-				(*pathIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
-
-				ConvertFromPath64(solution[i], (*outputPolylines)[i], count);
-
-				// Extract w, o, and p_i indices
-				for (int j = 0; j < count; ++j)
-				{
-					(*wIndices)[i][j] = solution[i][j].w;
-					(*offsetOriginalIndices)[i][j] = solution[i][j].o;
-					(*pathIndices)[i][j] = solution[i][j].p_i;
-				}
+				(*outputPolylines)[i] = (BoundaryPoint*)CoTaskMemAlloc(sizeof(BoundaryPoint) * count);
+				Path64ToBoundaryPoints(solution[i], (*outputPolylines)[i], count);
 			}
 		}
-		else
-		{
+		else {
 			outputPolylineCount = 0;
 			*outputPolylines = nullptr;
 			*outputCounts = nullptr;
-			*wIndices = nullptr;
-			*offsetOriginalIndices = nullptr;
-			*pathIndices = nullptr;
 		}
 	}
+
 	PINVOKE void UnionAndIntersection(
-		const Point3d** subjectPolylines,
+		const BoundaryPoint** subjectPolylines,
 		const int* subjectCounts,
 		int subjectPolylineCount,
-		int** subjectPathList,              // NEW: Array of w indices for each subject polyline
-		int** subjectOList,              // NEW: Array of o indices for each subject polyline
 		const Point3d** clipPolylines,
 		const int* clipCounts,
 		int clipPolylineCount,
-		int** clipWList,                 // NEW: Array of w indices for each clip polyline
-		int** clipOList,                 // NEW: Array of o indices for each clip polyline
-		Point3d*** outputPolylines,      // Array of output polyline pointers
-		int** outputCounts,              // Array of vertex counts for each output polyline
-		int& outputPolylineCount,        // Number of output polylines
-		int*** wIndices,                 // Array of w indices for each output polyline
-		int*** offsetOriginalIndices,    // Array of o indices for each output polyline
-		int*** pathIndices,              // Array of p_i (path index) for each output polyline
+		BoundaryPoint*** outputPolylines,
+		int** outputCounts,
+		int& outputPolylineCount,
 		bool preserveCollinear = false,
-		FillRule fillRule = FillRule::NonZero
-	)
+		FillRule fillRule = FillRule::NonZero)
 	{
-		// Convert subject polylines to Path64
-	// Convert subject polylines to Path64
+		// Convert subject polylines (with metadata)
 		Paths64 subjects;
 		subjects.reserve(subjectPolylineCount);
+		for (int i = 0; i < subjectPolylineCount; ++i) {
+			Path64 path = BoundaryPointsToPath64(subjectPolylines[i], subjectCounts[i]);
+			if (!Clipper2Lib::IsPositive(path)) {
+				std::reverse(path.begin(), path.end());
+			}
 
-		for (int i = 0; i < subjectPolylineCount; ++i)
-		{
-			const Point3d* points = subjectPolylines[i];
-			int count = subjectCounts[i];
-
-			const int* pIndex = (subjectPathList != nullptr) ? subjectPathList[i] : nullptr;
-			const int* oList = (subjectOList != nullptr) ? subjectOList[i] : nullptr;
-
-			Path64 path = ConvertToPath64WithData(points, count, pIndex, oList);
 			subjects.push_back(std::move(path));
 		}
 
-
-		// Convert clip polylines to Path64
+		// Convert clip polylines (simple geometry only)
 		Paths64 clips;
-		for (int i = 0; i < clipPolylineCount; ++i)
-		{
-			// Create arrays filled with -1 for clip polylines
-			int count = clipCounts[i];
-			int* wList = new int[count];
-			int* oList = new int[count];
-
-			// Fill with -1
-			for (int j = 0; j < count; ++j)
-			{
-				wList[j] = -1;
-				oList[j] = -1;
-			}
-
-			Path64 path = ConvertToPath64WithPathIndex(clipPolylines[i], clipCounts[i], -1, wList, oList);
-			clips.push_back(path);
-
-			// Clean up temporary arrays
-			delete[] wList;
-			delete[] oList;
+		clips.reserve(clipPolylineCount);
+		for (int i = 0; i < clipPolylineCount; ++i) {
+			Path64 path = ConvertToPath64(clipPolylines[i], clipCounts[i]);
+			clips.push_back(std::move(path));
 		}
 
-		// Perform union operation first
+		// Union subjects first
 		Paths64 unionSolution;
 		Clipper64 clipper;
 		clipper.PreserveCollinear(preserveCollinear);
@@ -571,7 +512,7 @@ namespace Clipper2Lib {
 		clipper.AddSubject(subjects);
 		clipper.Execute(ClipType::Union, fillRule, unionSolution);
 
-		// Now perform intersection on the union result with the clip polylines
+		// Then intersect with clip
 		Paths64 solution;
 		clipper.Clear();
 		clipper.PreserveCollinear(preserveCollinear);
@@ -582,144 +523,25 @@ namespace Clipper2Lib {
 		clipper.AddClip(clips);
 		clipper.Execute(ClipType::Intersection, fillRule, solution);
 
-		// Convert results back to Point3d arrays
-		if (!solution.empty())
-		{
+		if (!solution.empty()) {
 			outputPolylineCount = static_cast<int>(solution.size());
 
-			// Allocate outer arrays using CoTaskMemAlloc
-			*outputPolylines = (Point3d**)CoTaskMemAlloc(sizeof(Point3d*) * outputPolylineCount);
+			*outputPolylines = (BoundaryPoint**)CoTaskMemAlloc(sizeof(BoundaryPoint*) * outputPolylineCount);
 			*outputCounts = (int*)CoTaskMemAlloc(sizeof(int) * outputPolylineCount);
-			*wIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
-			*offsetOriginalIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
-			*pathIndices = (int**)CoTaskMemAlloc(sizeof(int*) * outputPolylineCount);
 
-			// Allocate and fill inner arrays
-			for (int i = 0; i < outputPolylineCount; ++i)
-			{
+			for (int i = 0; i < outputPolylineCount; ++i) {
 				int count = static_cast<int>(solution[i].size());
 				(*outputCounts)[i] = count;
 
-				// Allocate inner arrays using CoTaskMemAlloc
-				(*outputPolylines)[i] = (Point3d*)CoTaskMemAlloc(sizeof(Point3d) * count);
-				(*wIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
-				(*offsetOriginalIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
-				(*pathIndices)[i] = (int*)CoTaskMemAlloc(sizeof(int) * count);
-
-				ConvertFromPath64(solution[i], (*outputPolylines)[i], count);
-
-				// Extract w, o, and p_i indices
-				for (int j = 0; j < count; ++j)
-				{
-					(*wIndices)[i][j] = solution[i][j].w;
-					(*offsetOriginalIndices)[i][j] = solution[i][j].o;
-					(*pathIndices)[i][j] = solution[i][j].p_i;
-				}
+				(*outputPolylines)[i] = (BoundaryPoint*)CoTaskMemAlloc(sizeof(BoundaryPoint) * count);
+				Path64ToBoundaryPoints(solution[i], (*outputPolylines)[i], count);
 			}
 		}
-		else
-		{
+		else {
 			outputPolylineCount = 0;
 			*outputPolylines = nullptr;
 			*outputCounts = nullptr;
-			*wIndices = nullptr;
-			*offsetOriginalIndices = nullptr;
-			*pathIndices = nullptr;
 		}
 	}
 
-	PINVOKE void InflateVariableBothSideWithoutUnion(  //To Do I need to create another method where it takes in o value. if it is taken in, then we should stop offset from creating a new o value
-		const Point3d* inputPoints,
-		int inputCount,
-		double* leftSideDeltas,
-		double* rightSideDeltas,
-		Point3d** outputPoints0,
-		int& outputCount0,
-		int** wIndices,
-		int** offsetOriginalIndices,
-		double arc_tolerance,
-		JoinType joinType = JoinType::Round,
-		EndType endType = EndType::Butt
-	)
-	{
-		Path64 outPath;
-		Path64 inputPath = ConvertToPath64(inputPoints, inputCount);
-
-		Paths64 subject;
-
-
-
-		subject.push_back(inputPath);
-
-		float miter_limit = 1.0;
-		ClipperOffset co(miter_limit, arc_tolerance);
-
-		co.AddPaths(subject, joinType, endType);
-		DeltaSelector selector{
-			&co.is_another_side,
-			&co.ending_flag,
-			leftSideDeltas,
-			rightSideDeltas
-		};
-
-		co.SetDeltaCallback(selector);
-		// solution
-		Paths64 solution;
-
-		co.ExecuteWithoutUnion(1e6, solution);
-
-		// Convert the first output path to Point3d array
-		if (!solution.empty()) {
-			solution[0].push_back(solution[0].front());
-			outputCount0 = static_cast<int>(solution[0].size());
-			*outputPoints0 = new Point3d[outputCount0];
-			ConvertFromPath64(solution[0], *outputPoints0, outputCount0);
-
-			// Collect all  w values
-			std::vector<int> wTrueIndicesVec;
-			std::vector<int> offsetOriginalIndicesVec;
-			*wIndices = new int[outputCount0];
-			*offsetOriginalIndices = new int[outputCount0];
-
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i)
-			{
-				wTrueIndicesVec.push_back(solution[0][i].w);
-
-			}
-
-			// Allocate and copy indices
-			std::copy(wTrueIndicesVec.begin(), wTrueIndicesVec.end(), *wIndices);
-			// Collect all offset original indices
-
-			for (int i = 0; i < static_cast<int>(solution[0].size()); ++i) {
-				offsetOriginalIndicesVec.push_back(solution[0][i].o);
-			}
-
-			// Allocate and copy to output pointer
-			std::copy(offsetOriginalIndicesVec.begin(),
-				offsetOriginalIndicesVec.end(),
-				*offsetOriginalIndices);
-
-		}
-		else {
-			outputCount0 = 0;
-			*outputPoints0 = nullptr;
-			*wIndices = nullptr;
-			*offsetOriginalIndices = nullptr;
-		}
-	}
-
-	extern "C" __declspec(dllexport)
-		void FreeMemory(Point3d* ptr)
-	{
-		delete[] ptr;
-	}
-
-
-#include <vector>
-#include <cmath>
-
-
-
-
-}
+} // namespace Clipper2Lib

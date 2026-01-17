@@ -1,8 +1,9 @@
 ﻿  Wrapper.cpp
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(51,23): warning C4244: 'argument': conversion from 'double' to 'const Clipper2Lib::z_type', possible loss of data
      Creating library C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Release\Clipper2_Z_64.lib and object C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Release\Clipper2_Z_64.exp
   Generating code
-  20 of 2460 functions ( 0.8%) were compiled, the rest were copied from previous compilation.
-    18 functions were new in current compilation
-    11 functions had inline decision re-evaluated but remain unchanged
+  2 of 2403 functions (<0.1%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    6 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
   Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Release\Clipper2_Z_64.dll

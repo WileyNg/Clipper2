@@ -1,2 +1,9 @@
-﻿  Wrapper.cpp
+﻿  clipper.engine.cpp
+  clipper.offset.cpp
+  clipper.rectclip.cpp
+  Wrapper.cpp
+C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\Wrapper.cpp(51,23): warning C4244: 'argument': conversion from 'double' to 'const Clipper2Lib::z_type', possible loss of data
+  dllmain.cpp
+  Generating Code...
+     Creating library C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.lib and object C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.exp
   Clipper2ZDll.vcxproj -> C:\Users\Wileyng\source\repos\Clipper2\DLL\CPP_DLL\x64\Debug\Clipper2_Z_64.dll
